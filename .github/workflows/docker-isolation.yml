@@ -1,0 +1,30 @@
+name: Docker isolation smoke test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXUS_PROXY_ORIGIN: https://example.com/mcp
+      NEXUS_PROXY_SECRET: ci-only-not-a-production-secret-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Compose configuration
+        run: docker compose -f compose.egress.yaml --profile egress-test config --quiet
+      - name: Build containers
+        run: docker compose -f compose.egress.yaml --profile egress-test build
+      - name: Start isolated relay
+        run: docker compose -f compose.egress.yaml --profile egress-test up -d mcp-relay
+      - name: Verify worker cannot reach external network directly
+        # Do not retry an isolation failure: a retry can hide a transient escape.
+        run: docker compose -f compose.egress.yaml --profile egress-test run --rm --no-deps mcp-worker
+      - name: Show relay logs on failure
+        if: failure()
+        run: docker compose -f compose.egress.yaml --profile egress-test logs --no-color mcp-relay
+      - name: Tear down
+        if: always()
+        run: docker compose -f compose.egress.yaml --profile egress-test down --remove-orphans
