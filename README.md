@@ -48,8 +48,8 @@ Each integration should declare a stable identifier, provider, version, input/ou
 
 ## Suggested documentation roadmap
 
-- [ ] ADRs for runtime architecture, plugin lifecycle, schema evolution and trust model
-- [ ] Registry schema and example manifests
+- [x] [Draft architecture decisions](docs/ARCHITECTURE_DECISIONS.md) for authority, manifest trust, lifecycle and release gates (not yet implementation decisions)
+- [ ] Validated registry schema and example manifests
 - [ ] Adapter SDK and contract tests
 - [ ] ModelRig integration and approval flow
 - [ ] Installation, configuration and rollback runbooks
