@@ -1,0 +1,54 @@
+{
+  "manifest_version": "0.1",
+  "capability_id": "weather.current.read",
+  "provider_id": "example-weather",
+  "adapter_version": "0.1.0",
+  "display_name": "Current weather",
+  "description": "Read current weather",
+  "operation": "read",
+  "approval": "modelrig_policy",
+  "enabled_by_default": false,
+  "auth": {
+    "type": "api_key",
+    "secret_ref": "vault://kalivnexus/example-weather"
+  },
+  "network": {
+    "allowed_https_hosts": [
+      "api.example.invalid"
+    ],
+    "allow_redirects": false,
+    "timeout_ms": 5000,
+    "max_response_bytes": 262144
+  },
+  "privacy": {
+    "data_classification": "location",
+    "external_transfer": true,
+    "retention": "provider_terms_review_required"
+  },
+  "limits": {
+    "max_requests_per_minute": 30,
+    "max_concurrency": 2,
+    "max_cost_per_call_usd": 0
+  },
+  "retry": {
+    "max_attempts": 2,
+    "backoff_ms": 250,
+    "idempotent": true
+  },
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "summary": {
+        "type": "string"
+      }
+    }
+  }
+}
