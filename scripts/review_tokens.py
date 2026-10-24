@@ -3,6 +3,7 @@
 A trusted issuer must hold the shared secret. Tokens are not an OIDC substitute.
 """
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -30,10 +31,14 @@ class ReviewTokenVerifier:
         self._clock = clock
 
     def verify(self, token: str) -> AuthenticatedPrincipal:
-        if not isinstance(token, str) or len(token) > 8192:
+        if not isinstance(token, str) or len(token) > 8192 or not token:
             raise PermissionError("Invalid token")
         try:
             payload_part, signature_part = token.split(".")
+            if not payload_part or not re.fullmatch(r"[A-Za-z0-9_-]+", payload_part):
+                raise PermissionError("Invalid token payload encoding")
+            if not re.fullmatch(r"[A-Za-z0-9_-]{43}", signature_part):
+                raise PermissionError("Invalid token signature encoding")
             supplied = _decode(signature_part)
             expected = hmac.new(self._secret, payload_part.encode("ascii"), hashlib.sha256).digest()
             if not hmac.compare_digest(supplied, expected):
@@ -60,7 +65,7 @@ class ReviewTokenVerifier:
             if not isinstance(subject, str) or not subject.strip():
                 raise PermissionError("Invalid subject")
             return AuthenticatedPrincipal(subject=subject, issuer=self._issuer, roles=frozenset(roles))
-        except (ValueError, KeyError, TypeError, UnicodeError) as exc:
+        except (ValueError, KeyError, TypeError, UnicodeError, binascii.Error) as exc:
             raise PermissionError("Malformed review token") from exc
 
 
