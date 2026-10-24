@@ -136,5 +136,29 @@ class PersistentManifestRegistry:
             ("review_id", "reviewer", "decision", "reason", "manifest_sha256", "occurred_at"), row
         )) for row in rows]
 
+    def verify_integrity(self, identifier: str) -> list[str]:
+        """Detect inconsistent persisted state; NOT a tamper-proof audit log."""
+        problems: list[str] = []
+        record = self.get(identifier)
+        serialized = json.dumps(record["manifest"], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        if digest != record["manifest_sha256"]:
+            problems.append("manifest hash mismatch")
+        events = self.audit_events(identifier)
+        if not events or events[0]["action"] != "registered":
+            problems.append("missing registration event")
+        for event in events:
+            if event["manifest_sha256"] != record["manifest_sha256"]:
+                problems.append("lifecycle event hash mismatch")
+        revoked = [event for event in events if event["action"] == "revoked"]
+        if len(revoked) > 1:
+            problems.append("multiple revocation events")
+        if (record["status"] == "revoked") != bool(revoked):
+            problems.append("status/revocation event mismatch")
+        for event in self.review_events(identifier):
+            if event["manifest_sha256"] != record["manifest_sha256"]:
+                problems.append("review event hash mismatch")
+        return problems
+
     def execute(self, identifier: str, **kwargs: Any) -> None:
         raise PermissionError("Execution is disabled: no authorization/runtime adapter exists")
