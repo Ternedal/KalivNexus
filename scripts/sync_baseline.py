@@ -82,7 +82,7 @@ def main():
         return
     elements = [{"path": path, "mode": "100644", "type": "blob", "content": source}
                 for path, source in changes]
-    new_tree = request("POST", base + "/git/trees", token, {"base_tree": head, "tree": elements})["sha"]
+    new_tree = request("POST", base + "/git/trees", token, {"base_tree": tree["sha"], "tree": elements})["sha"]
     commit = request("POST", base + "/git/commits", token, {
         "message": "bootstrap: reconcile complete v0.50.0 baseline from source archive",
         "tree": new_tree, "parents": [head],
