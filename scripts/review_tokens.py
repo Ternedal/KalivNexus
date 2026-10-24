@@ -74,6 +74,11 @@ class SignedReviewService:
         claims = json.loads(_decode(token.split(".")[0]))
         if claims.get("capability_id") != identifier or claims.get("decision") != decision:
             raise PermissionError("Token scope does not match review request")
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError("Review reason is required")
+        reason_digest = hashlib.sha256(reason.encode("utf-8")).hexdigest()
+        if not hmac.compare_digest(str(claims.get("reason_sha256", "")), reason_digest):
+            raise PermissionError("Token reason does not match review request")
         nonce = claims["jti"]
         # Unique SQLite key prevents replay across processes and restarts.
         # Fail closed: reservation remains consumed even if review submission fails.
