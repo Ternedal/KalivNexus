@@ -20,7 +20,7 @@ def test_pinned_execution_mock_only():
     assert result['status_code'] == 200 and result['bytes'] == 11
 
 def test_private_dns_blocked_before_connection():
-    resolver = lambda *args, **kwargs: [(2, 1, 6, '',', ('127.0.0.1', 443))]
+    resolver = lambda *args, **kwargs: [(2, 1, 6, '', ('127.0.0.1', 443))]
     with pytest.raises(PermissionError):
         execute_get('https://api.example.com/items', resolver=resolver, connection_factory=FakeConnection)
 
