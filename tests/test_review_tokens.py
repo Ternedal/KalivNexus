@@ -43,7 +43,7 @@ class SignedReviewTests(unittest.TestCase):
     def test_tampered_token_rejected(self):
         token = encode(self.claims)
         with self.assertRaises(PermissionError):
-            self.service.submit_review(self.identifier, token[:-1] + "x", "approved", "checked")
+            self.service.submit_review(self.identifier, "x" + token[1:], "approved", "checked")
 
     def test_wrong_signing_key_rejected(self):
         with self.assertRaises(PermissionError):
