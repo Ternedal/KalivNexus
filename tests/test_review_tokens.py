@@ -81,6 +81,24 @@ class SignedReviewTests(unittest.TestCase):
             self.service.submit_review(self.identifier, token, "approved", "again")
         self.assertEqual(len(self.registry.review_events(self.identifier)), 1)
 
+    def test_replay_rejected_after_service_restart(self):
+        token = encode(self.claims)
+        self.service.submit_review(self.identifier, token, "approved", "checked")
+        reopened = PersistentManifestRegistry(Path(self.temp.name) / "registry.sqlite3")
+        verifier = ReviewTokenVerifier(KEY, "issuer-1", "kalivnexus-review", clock=lambda: 1000)
+        other = SignedReviewService(ReviewService(reopened, "issuer-1"), verifier)
+        with self.assertRaises(PermissionError):
+            other.submit_review(self.identifier, token, "approved", "again")
+        self.assertEqual(len(reopened.review_events(self.identifier)), 1)
+
+    def test_replay_rejected_across_service_instances(self):
+        token = encode(self.claims)
+        verifier = ReviewTokenVerifier(KEY, "issuer-1", "kalivnexus-review", clock=lambda: 1000)
+        other = SignedReviewService(ReviewService(self.registry, "issuer-1"), verifier)
+        self.service.submit_review(self.identifier, token, "approved", "checked")
+        with self.assertRaises(PermissionError):
+            other.submit_review(self.identifier, token, "approved", "again")
+
     def test_missing_nonce_rejected(self):
         self.claims.pop("jti")
         with self.assertRaises(PermissionError):
