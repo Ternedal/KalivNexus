@@ -58,7 +58,7 @@ Each integration should declare a stable identifier, provider, version, input/ou
 
 ## Current prototype (not an active broker)
 
-The repository now contains a draft JSON Schema, a Python manifest validator, and an in-memory default-deny catalog with unit tests. The catalog deliberately has **no enable or execution path**; it does not persist state, connect to ModelRig, resolve secrets, or call external APIs.
+The repository now contains a draft JSON Schema, a Python manifest validator, an in-memory default-deny catalog and a **SQLite-backed prototype** with registration, revocation and lifecycle events. Neither catalog has an enable or execution path. The SQLite database persists local state, but is not a hardened tamper-proof audit log or multi-user approval system. Neither implementation connects to ModelRig, resolves secrets or calls external APIs.
 
 To run the local contract tests with Python 3.11:
 
