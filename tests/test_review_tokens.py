@@ -125,6 +125,19 @@ class SignedReviewTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
 
+    def test_malformed_base64_rejected(self):
+        for token in ("", "!", "a.!", "a.b", "a.b.c", "%%%%." + "a" * 43):
+            with self.subTest(token=token):
+                with self.assertRaises(PermissionError):
+                    self.service.submit_review(self.identifier, token, "approved", "checked")
+
+    def test_invalid_utf8_payload_rejected(self):
+        payload = base64.urlsafe_b64encode(b"\\xff").decode().rstrip("=")
+        signature = hmac.new(KEY, payload.encode(), hashlib.sha256).digest()
+        token = payload + "." + base64.urlsafe_b64encode(signature).decode().rstrip("=")
+        with self.assertRaises(PermissionError):
+            self.service.submit_review(self.identifier, token, "approved", "checked")
+
     def test_bad_key_rejected(self):
         with self.assertRaises(ValueError):
             ReviewTokenVerifier(b"short", "issuer-1", "kalivnexus-review")
