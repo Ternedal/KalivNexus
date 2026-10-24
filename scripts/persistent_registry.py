@@ -2,7 +2,6 @@
 
 No provider invocation, activation, credentials, or network operations.
 """
-import copy
 import hashlib
 import json
 import sqlite3
@@ -95,6 +94,56 @@ class PersistentManifestRegistry:
             dict(zip(("event_id", "action", "reason", "manifest_sha256", "occurred_at"), row))
             for row in rows
         ]
+
+    def record_review(self, identifier: str, reviewer: str, decision: str, reason: str) -> None:
+        """Record a human review without granting any runtime authority."""
+        if decision not in ("approved", "rejected"):
+            raise ValueError("Review decision must be approved or rejected")
+        if not isinstance(reviewer, str) or not reviewer.strip():
+            raise ValueError("Reviewer identity is required")
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError("Review reason is required")
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT status, manifest_sha256 FROM capabilities WHERE capability_id=?", (identifier,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(identifier)
+            if row[0] != "disabled":
+                raise PermissionError("Revoked capability cannot be reviewed")
+            db.execute("""CREATE TABLE IF NOT EXISTS review_events (
+                review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                capability_id TEXT NOT NULL REFERENCES capabilities(capability_id),
+                reviewer TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+                reason TEXT NOT NULL,
+                manifest_sha256 TEXT NOT NULL,
+                occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            )""")
+            db.execute(
+                "INSERT INTO review_events (capability_id, reviewer, decision, reason, manifest_sha256) VALUES (?, ?, ?, ?, ?)",
+                (identifier, reviewer, decision, reason, row[1]),
+            )
+
+    def review_events(self, identifier: str) -> list[dict[str, Any]]:
+        self.get(identifier)
+        with self._connect() as db:
+            db.execute("""CREATE TABLE IF NOT EXISTS review_events (
+                review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                capability_id TEXT NOT NULL REFERENCES capabilities(capability_id),
+                reviewer TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+                reason TEXT NOT NULL,
+                manifest_sha256 TEXT NOT NULL,
+                occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            )""")
+            rows = db.execute(
+                "SELECT review_id, reviewer, decision, reason, manifest_sha256, occurred_at FROM review_events WHERE capability_id=? ORDER BY review_id",
+                (identifier,),
+            ).fetchall()
+        return [dict(zip(
+            ("review_id", "reviewer", "decision", "reason", "manifest_sha256", "occurred_at"), row
+        )) for row in rows]
 
     def execute(self, identifier: str, **kwargs: Any) -> None:
         raise PermissionError("Execution is disabled: no authorization/runtime adapter exists")
