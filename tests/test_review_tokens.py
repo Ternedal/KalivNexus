@@ -116,6 +116,16 @@ class SignedReviewTests(unittest.TestCase):
         self.assertEqual(results.count("rejected"), 15)
         self.assertEqual(len(self.registry.review_events(self.identifier)), 1)
 
+    def test_token_stays_consumed_after_revocation(self):
+        token = encode(self.claims)
+        self.registry.revoke(self.identifier, "security")
+        with self.assertRaises(PermissionError):
+            self.service.submit_review(self.identifier, token, "approved", "checked")
+        with self.assertRaises(PermissionError) as caught:
+            self.service.submit_review(self.identifier, token, "approved", "checked")
+        self.assertIn("already consumed", str(caught.exception))
+        self.assertEqual(self.registry.review_events(self.identifier), [])
+
     def test_missing_nonce_rejected(self):
         self.claims.pop("jti")
         with self.assertRaises(PermissionError):
