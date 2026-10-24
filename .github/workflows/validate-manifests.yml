@@ -6,6 +6,7 @@ on:
       - 'schemas/**'
       - 'examples/**'
       - 'tests/**'
+      - 'scripts/**'
       - '.github/workflows/validate-manifests.yml'
   pull_request:
     paths:
