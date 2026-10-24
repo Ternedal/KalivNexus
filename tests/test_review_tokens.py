@@ -32,7 +32,8 @@ class SignedReviewTests(unittest.TestCase):
         self.service = SignedReviewService(ReviewService(self.registry, "issuer-1"), verifier)
         self.claims = dict(iss="issuer-1", aud="kalivnexus-review", sub="reviewer-123",
                            roles=["nexus:reviewer"], iat=990, exp=1100, jti="test-review-nonce-0001",
-                           capability_id=self.identifier, decision="approved")
+                           capability_id=self.identifier, decision="approved",
+                           reason_sha256=hashlib.sha256(b"checked").hexdigest())
 
     def test_signed_review_stays_disabled(self):
         self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
@@ -113,6 +114,16 @@ class SignedReviewTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             self.service.submit_review(self.identifier, encode(self.claims), "rejected", "checked")
         self.assertEqual(self.registry.review_events(self.identifier), [])
+
+    def test_token_cannot_change_audit_reason(self):
+        with self.assertRaises(PermissionError):
+            self.service.submit_review(self.identifier, encode(self.claims), "approved", "different")
+        self.assertEqual(self.registry.review_events(self.identifier), [])
+
+    def test_missing_reason_digest_rejected(self):
+        self.claims.pop("reason_sha256")
+        with self.assertRaises(PermissionError):
+            self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
 
     def test_bad_key_rejected(self):
         with self.assertRaises(ValueError):
