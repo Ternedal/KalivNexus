@@ -37,6 +37,15 @@ class PersistentManifestRegistry:
                 manifest_sha256 TEXT NOT NULL,
                 occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
             )""")
+            db.execute("""CREATE TABLE IF NOT EXISTS review_events (
+                review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                capability_id TEXT NOT NULL REFERENCES capabilities(capability_id),
+                reviewer TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+                reason TEXT NOT NULL,
+                manifest_sha256 TEXT NOT NULL,
+                occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            )""")
 
     def register(self, manifest: dict[str, Any], reason: str = "initial registration") -> str:
         validate_manifest(manifest)
@@ -128,15 +137,6 @@ class PersistentManifestRegistry:
     def review_events(self, identifier: str) -> list[dict[str, Any]]:
         self.get(identifier)
         with self._connect() as db:
-            db.execute("""CREATE TABLE IF NOT EXISTS review_events (
-                review_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                capability_id TEXT NOT NULL REFERENCES capabilities(capability_id),
-                reviewer TEXT NOT NULL,
-                decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
-                reason TEXT NOT NULL,
-                manifest_sha256 TEXT NOT NULL,
-                occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-            )""")
             rows = db.execute(
                 "SELECT review_id, reviewer, decision, reason, manifest_sha256, occurred_at FROM review_events WHERE capability_id=? ORDER BY review_id",
                 (identifier,),
