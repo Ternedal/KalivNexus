@@ -72,6 +72,8 @@ class SignedReviewService:
     def submit_review(self, identifier: str, token: str, decision: str, reason: str) -> None:
         principal = self._verifier.verify(token)
         claims = json.loads(_decode(token.split(".")[0]))
+        if claims.get("capability_id") != identifier or claims.get("decision") != decision:
+            raise PermissionError("Token scope does not match review request")
         nonce = claims["jti"]
         # Unique SQLite key prevents replay across processes and restarts.
         # Fail closed: reservation remains consumed even if review submission fails.
