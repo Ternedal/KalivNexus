@@ -120,15 +120,6 @@ class PersistentManifestRegistry:
                 raise KeyError(identifier)
             if row[0] != "disabled":
                 raise PermissionError("Revoked capability cannot be reviewed")
-            db.execute("""CREATE TABLE IF NOT EXISTS review_events (
-                review_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                capability_id TEXT NOT NULL REFERENCES capabilities(capability_id),
-                reviewer TEXT NOT NULL,
-                decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
-                reason TEXT NOT NULL,
-                manifest_sha256 TEXT NOT NULL,
-                occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-            )""")
             db.execute(
                 "INSERT INTO review_events (capability_id, reviewer, decision, reason, manifest_sha256) VALUES (?, ?, ?, ?, ?)",
                 (identifier, reviewer, decision, reason, row[1]),
