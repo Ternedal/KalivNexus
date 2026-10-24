@@ -31,7 +31,8 @@ class SignedReviewTests(unittest.TestCase):
         verifier = ReviewTokenVerifier(KEY, "issuer-1", "kalivnexus-review", clock=lambda: 1000)
         self.service = SignedReviewService(ReviewService(self.registry, "issuer-1"), verifier)
         self.claims = dict(iss="issuer-1", aud="kalivnexus-review", sub="reviewer-123",
-                           roles=["nexus:reviewer"], iat=990, exp=1100, jti="test-review-nonce-0001")
+                           roles=["nexus:reviewer"], iat=990, exp=1100, jti="test-review-nonce-0001",
+                           capability_id=self.identifier, decision="approved")
 
     def test_signed_review_stays_disabled(self):
         self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
@@ -103,6 +104,15 @@ class SignedReviewTests(unittest.TestCase):
         self.claims.pop("jti")
         with self.assertRaises(PermissionError):
             self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
+
+    def test_token_cannot_authorize_other_capability(self):
+        with self.assertRaises(PermissionError):
+            self.service.submit_review("another.capability", encode(self.claims), "approved", "checked")
+
+    def test_token_cannot_change_review_decision(self):
+        with self.assertRaises(PermissionError):
+            self.service.submit_review(self.identifier, encode(self.claims), "rejected", "checked")
+        self.assertEqual(self.registry.review_events(self.identifier), [])
 
     def test_bad_key_rejected(self):
         with self.assertRaises(ValueError):
