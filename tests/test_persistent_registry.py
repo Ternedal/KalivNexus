@@ -100,6 +100,33 @@ class PersistentRegistryTests(unittest.TestCase):
         restored = PersistentManifestRegistry(self.path)
         self.assertEqual(len(restored.review_events(identifier)), 1)
 
+    def test_integrity_verifier_accepts_normal_lifecycle(self):
+        identifier = self.registry.register(EXAMPLE)
+        self.registry.record_review(identifier, "reviewer", "approved", "review")
+        self.assertEqual(self.registry.verify_integrity(identifier), [])
+        self.registry.revoke(identifier, "retired")
+        self.assertEqual(self.registry.verify_integrity(identifier), [])
+
+    def test_integrity_verifier_detects_manifest_tampering(self):
+        identifier = self.registry.register(EXAMPLE)
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE capabilities SET manifest_json=? WHERE capability_id=?",
+                       ('{"capability_id":"weather.current.read"}', identifier))
+        self.assertIn("manifest hash mismatch", self.registry.verify_integrity(identifier))
+
+    def test_integrity_verifier_detects_status_tampering(self):
+        identifier = self.registry.register(EXAMPLE)
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE capabilities SET status='revoked' WHERE capability_id=?", (identifier,))
+        self.assertIn("status/revocation event mismatch", self.registry.verify_integrity(identifier))
+
+    def test_integrity_verifier_detects_review_hash_tampering(self):
+        identifier = self.registry.register(EXAMPLE)
+        self.registry.record_review(identifier, "reviewer", "approved", "review")
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE review_events SET manifest_sha256='corrupt' WHERE capability_id=?", (identifier,))
+        self.assertIn("review event hash mismatch", self.registry.verify_integrity(identifier))
+
     def test_execution_never_allowed(self):
         identifier = self.registry.register(EXAMPLE)
         with self.assertRaises(PermissionError):
