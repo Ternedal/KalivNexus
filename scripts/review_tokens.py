@@ -6,6 +6,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import time
 from typing import Callable
 
@@ -49,6 +50,9 @@ class ReviewTokenVerifier:
                 raise PermissionError("Token outside allowed lifetime")
             if claims["iss"] != self._issuer or claims["aud"] != self._audience:
                 raise PermissionError("Issuer or audience mismatch")
+            nonce = claims["jti"]
+            if not isinstance(nonce, str) or not re.fullmatch(r"[A-Za-z0-9_-]{16,128}", nonce):
+                raise PermissionError("Invalid token identifier")
             roles = claims["roles"]
             if not isinstance(roles, list) or not all(isinstance(role, str) for role in roles):
                 raise PermissionError("Invalid roles")
@@ -64,7 +68,14 @@ class SignedReviewService:
     def __init__(self, service: ReviewService, verifier: ReviewTokenVerifier):
         self._service = service
         self._verifier = verifier
+        self._consumed = set()  # Per-process only; use durable shared storage before deployment.
 
     def submit_review(self, identifier: str, token: str, decision: str, reason: str) -> None:
         principal = self._verifier.verify(token)
+        claims = json.loads(_decode(token.split(".")[0]))
+        nonce = claims["jti"]
+        if nonce in self._consumed:
+            raise PermissionError("Review token already consumed")
+        # This is a single-process prototype. No cross-process replay protection.
+        self._consumed.add(nonce)
         self._service.submit_review(identifier, principal, decision, reason)
