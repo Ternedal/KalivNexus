@@ -1,0 +1,32 @@
+"""Pure read-only adapter contract. No HTTP, credentials, or activation."""
+from dataclasses import dataclass
+from typing import Any, Callable, Mapping
+
+
+@dataclass(frozen=True)
+class ReadOnlyRequest:
+    capability_id: str
+    arguments: Mapping[str, Any]
+
+
+class ReadOnlyAdapter:
+    """An injected, offline callable with an explicit capability binding."""
+
+    def __init__(self, capability_id: str, handler: Callable[[Mapping[str, Any]], Mapping[str, Any]]):
+        if not isinstance(capability_id, str) or not capability_id.strip():
+            raise ValueError("Capability ID is required")
+        if not callable(handler):
+            raise TypeError("Adapter handler must be callable")
+        self.capability_id = capability_id
+        self._handler = handler
+
+    def invoke_for_test(self, request: ReadOnlyRequest) -> dict[str, Any]:
+        """Exercise a fixture handler, never a live provider."""
+        if request.capability_id != self.capability_id:
+            raise PermissionError("Adapter capability mismatch")
+        if not isinstance(request.arguments, Mapping):
+            raise TypeError("Arguments must be a mapping")
+        result = self._handler(dict(request.arguments))
+        if not isinstance(result, Mapping):
+            raise TypeError("Adapter response must be a mapping")
+        return dict(result)
