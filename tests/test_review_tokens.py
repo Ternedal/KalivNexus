@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from pathlib import Path
 
@@ -100,6 +101,20 @@ class SignedReviewTests(unittest.TestCase):
         self.service.submit_review(self.identifier, token, "approved", "checked")
         with self.assertRaises(PermissionError):
             other.submit_review(self.identifier, token, "approved", "again")
+
+    def test_concurrent_replay_only_one_review_recorded(self):
+        token = encode(self.claims)
+        def submit(_):
+            try:
+                self.service.submit_review(self.identifier, token, "approved", "checked")
+                return "accepted"
+            except PermissionError:
+                return "rejected"
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(submit, range(16)))
+        self.assertEqual(results.count("accepted"), 1)
+        self.assertEqual(results.count("rejected"), 15)
+        self.assertEqual(len(self.registry.review_events(self.identifier)), 1)
 
     def test_missing_nonce_rejected(self):
         self.claims.pop("jti")
