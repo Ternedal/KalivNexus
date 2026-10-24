@@ -46,6 +46,12 @@ class PersistentManifestRegistry:
                 manifest_sha256 TEXT NOT NULL,
                 occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
             )""")
+            db.execute("""CREATE TABLE IF NOT EXISTS consumed_review_tokens (
+                issuer TEXT NOT NULL,
+                token_id TEXT NOT NULL,
+                expires_at INTEGER NOT NULL,
+                PRIMARY KEY (issuer, token_id)
+            )""")
 
     def consume_review_token(self, issuer: str, token_id: str, expires_at: int) -> None:
         """Atomically reserve a signed review token across processes and restarts.
@@ -55,12 +61,6 @@ class PersistentManifestRegistry:
         if not issuer or not token_id or type(expires_at) is not int:
             raise ValueError("Invalid token reservation")
         with self._connect() as db:
-            db.execute("""CREATE TABLE IF NOT EXISTS consumed_review_tokens (
-                issuer TEXT NOT NULL,
-                token_id TEXT NOT NULL,
-                expires_at INTEGER NOT NULL,
-                PRIMARY KEY (issuer, token_id)
-            )""")
             try:
                 db.execute(
                     "INSERT INTO consumed_review_tokens (issuer, token_id, expires_at) VALUES (?, ?, ?)",
