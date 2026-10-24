@@ -7,7 +7,6 @@ import hashlib
 import hmac
 import json
 import re
-import threading
 import time
 from typing import Callable
 
@@ -69,17 +68,12 @@ class SignedReviewService:
     def __init__(self, service: ReviewService, verifier: ReviewTokenVerifier):
         self._service = service
         self._verifier = verifier
-        self._consumed = set()  # Per-process only; use durable shared storage before deployment.
-        self._lock = threading.Lock()
 
     def submit_review(self, identifier: str, token: str, decision: str, reason: str) -> None:
         principal = self._verifier.verify(token)
         claims = json.loads(_decode(token.split(".")[0]))
         nonce = claims["jti"]
-        # Serialize check-and-consume to prevent concurrent replay in this process.
-        with self._lock:
-            if nonce in self._consumed:
-                raise PermissionError("Review token already consumed")
-            self._consumed.add(nonce)
-        # Consumed even if the downstream review fails: fail closed.
+        # Unique SQLite key prevents replay across processes and restarts.
+        # Fail closed: reservation remains consumed even if review submission fails.
+        self._service._registry.consume_review_token(principal.issuer, nonce, claims["exp"])
         self._service.submit_review(identifier, principal, decision, reason)
