@@ -13,6 +13,7 @@ on:
       - 'schemas/**'
       - 'examples/**'
       - 'tests/**'
+      - 'scripts/**'
       - '.github/workflows/validate-manifests.yml'
   workflow_dispatch:
 permissions:
