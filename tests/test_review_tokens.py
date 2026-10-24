@@ -31,7 +31,7 @@ class SignedReviewTests(unittest.TestCase):
         verifier = ReviewTokenVerifier(KEY, "issuer-1", "kalivnexus-review", clock=lambda: 1000)
         self.service = SignedReviewService(ReviewService(self.registry, "issuer-1"), verifier)
         self.claims = dict(iss="issuer-1", aud="kalivnexus-review", sub="reviewer-123",
-                           roles=["nexus:reviewer"], iat=990, exp=1100)
+                           roles=["nexus:reviewer"], iat=990, exp=1100, jti="test-review-nonce-0001")
 
     def test_signed_review_stays_disabled(self):
         self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
@@ -71,6 +71,18 @@ class SignedReviewTests(unittest.TestCase):
 
     def test_overlong_lifetime_rejected(self):
         self.claims["exp"] = 2000
+        with self.assertRaises(PermissionError):
+            self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
+
+    def test_replayed_token_rejected(self):
+        token = encode(self.claims)
+        self.service.submit_review(self.identifier, token, "approved", "checked")
+        with self.assertRaises(PermissionError):
+            self.service.submit_review(self.identifier, token, "approved", "again")
+        self.assertEqual(len(self.registry.review_events(self.identifier)), 1)
+
+    def test_missing_nonce_rejected(self):
+        self.claims.pop("jti")
         with self.assertRaises(PermissionError):
             self.service.submit_review(self.identifier, encode(self.claims), "approved", "checked")
 
