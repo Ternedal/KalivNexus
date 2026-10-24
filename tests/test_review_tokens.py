@@ -132,7 +132,7 @@ class SignedReviewTests(unittest.TestCase):
                     self.service.submit_review(self.identifier, token, "approved", "checked")
 
     def test_invalid_utf8_payload_rejected(self):
-        payload = base64.urlsafe_b64encode(b"\\xff").decode().rstrip("=")
+        payload = base64.urlsafe_b64encode(bytes([255])).decode().rstrip("=")
         signature = hmac.new(KEY, payload.encode(), hashlib.sha256).digest()
         token = payload + "." + base64.urlsafe_b64encode(signature).decode().rstrip("=")
         with self.assertRaises(PermissionError):
