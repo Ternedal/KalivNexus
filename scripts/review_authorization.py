@@ -27,6 +27,12 @@ class ReviewService:
         self._registry = registry
         self._trusted_issuer = trusted_issuer
 
+    def reserve_token(self, issuer: str, token_id: str, expires_at: int) -> None:
+        """Reserve a verified token identifier in the durable registry."""
+        if issuer != self._trusted_issuer:
+            raise PermissionError("Untrusted identity issuer")
+        self._registry.consume_review_token(issuer, token_id, expires_at)
+
     def submit_review(self, identifier: str, principal: AuthenticatedPrincipal,
                       decision: str, reason: str) -> None:
         if not isinstance(principal, AuthenticatedPrincipal):
