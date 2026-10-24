@@ -56,6 +56,20 @@ Each integration should declare a stable identifier, provider, version, input/ou
 - [ ] Observability, costs, quotas and failure modes
 - [ ] End-to-end tests on exact pinned revisions
 
+## Current prototype (not an active broker)
+
+The repository now contains a draft JSON Schema, a Python manifest validator, and an in-memory default-deny catalog with unit tests. The catalog deliberately has **no enable or execution path**; it does not persist state, connect to ModelRig, resolve secrets, or call external APIs.
+
+To run the local contract tests with Python 3.11:
+
+```bash
+python -m pip install 'jsonschema==4.23.0'
+python -m unittest discover -s tests -p 'test_*.py' -v
+python scripts/validate_manifest.py examples/weather-readonly.manifest.json
+```
+
+The [CI workflow](.github/workflows/validate-manifests.yml) is configured to run these checks, but a passing CI run must be confirmed separately.
+
 ## Release discipline
 
 Document **proposed**, **implemented**, **automated-test verified**, **physically tested**, and **released** separately. This README describes a proposal, not delivered functionality.
