@@ -60,6 +60,46 @@ class PersistentRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.registry.revoke(identifier, "again")
 
+    def test_review_is_recorded_but_does_not_activate(self):
+        identifier = self.registry.register(EXAMPLE)
+        self.registry.record_review(identifier, "reviewer-1", "approved", "schema and terms reviewed")
+        events = self.registry.review_events(identifier)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["decision"], "approved")
+        self.assertEqual(events[0]["manifest_sha256"], self.registry.get(identifier)["manifest_sha256"])
+        self.assertEqual(self.registry.get(identifier)["status"], "disabled")
+        with self.assertRaises(PermissionError):
+            self.registry.execute(identifier)
+
+    def test_review_rejection_is_audited(self):
+        identifier = self.registry.register(EXAMPLE)
+        self.registry.record_review(identifier, "reviewer-1", "rejected", "provider not trusted")
+        self.assertEqual(self.registry.review_events(identifier)[0]["decision"], "rejected")
+
+    def test_review_rejects_missing_identity_reason_and_bad_decision(self):
+        identifier = self.registry.register(EXAMPLE)
+        for reviewer, decision, reason in (
+            (" ", "approved", "reason"),
+            ("reviewer", "unknown", "reason"),
+            ("reviewer", "approved", " "),
+        ):
+            with self.assertRaises(ValueError):
+                self.registry.record_review(identifier, reviewer, decision, reason)
+        self.assertEqual(self.registry.review_events(identifier), [])
+
+    def test_revoked_manifest_cannot_be_reviewed(self):
+        identifier = self.registry.register(EXAMPLE)
+        self.registry.revoke(identifier, "security concern")
+        with self.assertRaises(PermissionError):
+            self.registry.record_review(identifier, "reviewer", "approved", "review")
+        self.assertEqual(self.registry.review_events(identifier), [])
+
+    def test_review_survives_restart(self):
+        identifier = self.registry.register(EXAMPLE)
+        self.registry.record_review(identifier, "reviewer", "approved", "review")
+        restored = PersistentManifestRegistry(self.path)
+        self.assertEqual(len(restored.review_events(identifier)), 1)
+
     def test_execution_never_allowed(self):
         identifier = self.registry.register(EXAMPLE)
         with self.assertRaises(PermissionError):
