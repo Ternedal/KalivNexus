@@ -77,7 +77,8 @@ class SignedReviewService:
         if not isinstance(reason, str) or not reason.strip():
             raise ValueError("Review reason is required")
         reason_digest = hashlib.sha256(reason.encode("utf-8")).hexdigest()
-        if not hmac.compare_digest(str(claims.get("reason_sha256", "")), reason_digest):
+        signed_reason_digest = claims.get("reason_sha256")
+        if not isinstance(signed_reason_digest, str) or not hmac.compare_digest(signed_reason_digest, reason_digest):
             raise PermissionError("Token reason does not match review request")
         nonce = claims["jti"]
         # Unique SQLite key prevents replay across processes and restarts.
