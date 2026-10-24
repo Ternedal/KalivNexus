@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
+from scripts.validate_manifest import validate_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = json.loads((ROOT / "schemas/capability-manifest-v0.1.schema.json").read_text(encoding="utf-8"))
@@ -26,6 +27,21 @@ class ManifestContractTests(unittest.TestCase):
         self.assertTrue(self.validator.is_valid(EXAMPLE))
         for key in ("input_schema", "output_schema"):
             Draft202012Validator.check_schema(EXAMPLE[key])
+
+    def test_cli_validator_accepts_example(self):
+        validate_manifest(copy.deepcopy(EXAMPLE))
+
+    def test_cli_validator_rejects_invalid_nested_schema(self):
+        item = copy.deepcopy(EXAMPLE)
+        item["output_schema"] = {"type": "not-a-json-schema-type"}
+        with self.assertRaises(Exception):
+            validate_manifest(item)
+
+    def test_cli_validator_rejects_invalid_dns_label(self):
+        item = copy.deepcopy(EXAMPLE)
+        item["network"]["allowed_https_hosts"] = ["-invalid.example.com"]
+        with self.assertRaises(ValueError):
+            validate_manifest(item)
 
     def test_required_field(self):
         self.assert_rejected(lambda m: m.pop("capability_id"))
