@@ -75,5 +75,5 @@ class SignedReviewService:
         nonce = claims["jti"]
         # Unique SQLite key prevents replay across processes and restarts.
         # Fail closed: reservation remains consumed even if review submission fails.
-        self._service._registry.consume_review_token(principal.issuer, nonce, claims["exp"])
+        self._service.reserve_token(principal.issuer, nonce, claims["exp"])
         self._service.submit_review(identifier, principal, decision, reason)
