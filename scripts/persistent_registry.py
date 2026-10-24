@@ -47,6 +47,28 @@ class PersistentManifestRegistry:
                 occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
             )""")
 
+    def consume_review_token(self, issuer: str, token_id: str, expires_at: int) -> None:
+        """Atomically reserve a signed review token across processes and restarts.
+
+        Reservation is intentionally not rolled back if a later review fails.
+        """
+        if not issuer or not token_id or type(expires_at) is not int:
+            raise ValueError("Invalid token reservation")
+        with self._connect() as db:
+            db.execute("""CREATE TABLE IF NOT EXISTS consumed_review_tokens (
+                issuer TEXT NOT NULL,
+                token_id TEXT NOT NULL,
+                expires_at INTEGER NOT NULL,
+                PRIMARY KEY (issuer, token_id)
+            )""")
+            try:
+                db.execute(
+                    "INSERT INTO consumed_review_tokens (issuer, token_id, expires_at) VALUES (?, ?, ?)",
+                    (issuer, token_id, expires_at),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise PermissionError("Review token already consumed") from exc
+
     def register(self, manifest: dict[str, Any], reason: str = "initial registration") -> str:
         validate_manifest(manifest)
         if not isinstance(reason, str) or not reason.strip():
