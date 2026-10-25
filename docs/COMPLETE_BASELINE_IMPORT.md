@@ -47,3 +47,18 @@ This chat session does not have a GitHub API token in its local execution
 environment. The GitHub connector can write individual files, but cannot
 directly access the local ZIP archive. Consequently, publishing the importer
 is **not** the same as executing the complete import.
+
+## Verified original-source test baseline (2026-10-25)
+
+The flat-root verified v0.50.0 source ZIP was extracted to a temporary directory
+and tested with `NEXUS_ADMIN_TOKEN=test-secret python -m pytest -q`:
+
+```text
+247 passed in 10.23s
+```
+
+This result applies **only to the extracted source ZIP**, not to the incomplete
+GitHub bootstrap branch. The original release archive and the flat-root
+verified-source archive are both supported by the sync script. The importer
+must be run to reconcile all 92 original files, then branch CI must pass before
+merging. Never interpret this source-archive result as a branch CI pass.
