@@ -128,6 +128,23 @@ class ReadOnlyAdapterTests(unittest.TestCase):
             adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", nested))
         self.assertEqual(calls, [])
 
+    def test_oversized_input_rejected_before_handler(self):
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaisesRegex(ValueError, "1 MiB"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"data": "x" * 1_048_576}))
+        self.assertEqual(calls, [])
+
+    def test_oversized_output_rejected(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"data": "x" * 1_048_576})
+        with self.assertRaisesRegex(ValueError, "1 MiB"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
+    def test_utf8_byte_size_not_character_count(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "ok"})
+        with self.assertRaisesRegex(ValueError, "1 MiB"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"data": "ø" * 600_000}))
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
