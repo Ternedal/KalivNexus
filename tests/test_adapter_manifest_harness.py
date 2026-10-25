@@ -2,6 +2,7 @@
 import copy
 import json
 import unittest
+from jsonschema import ValidationError
 from pathlib import Path
 
 from scripts.adapter_manifest_harness import invoke_manifest_fixture
@@ -30,8 +31,26 @@ class AdapterManifestHarnessTests(unittest.TestCase):
 
     def test_invalid_output_rejected(self):
         adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": 12})
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             invoke_manifest_fixture(EXAMPLE, adapter, {})
+
+    def test_invalid_input_does_not_call_handler(self):
+        manifest = copy.deepcopy(EXAMPLE)
+        manifest["input_schema"]["required"] = ["location"]
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "Clear"})
+        with self.assertRaises(ValidationError):
+            invoke_manifest_fixture(manifest, adapter, {})
+        self.assertEqual(calls, [])
+
+    def test_schema_invalid_manifest_does_not_call_handler(self):
+        manifest = copy.deepcopy(EXAMPLE)
+        manifest["output_schema"] = {"type": "not-a-json-schema-type"}
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "Clear"})
+        with self.assertRaises(Exception):
+            invoke_manifest_fixture(manifest, adapter, {"location": "Copenhagen"})
+        self.assertEqual(calls, [])
 
 
 if __name__ == "__main__":
