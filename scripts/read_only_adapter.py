@@ -64,19 +64,19 @@ class ReadOnlyAdapter:
         """Exercise a fixture handler, never a live provider."""
         if request.capability_id != self.capability_id:
             raise PermissionError("Adapter capability mismatch")
-        if not isinstance(request.arguments, Mapping):
-            raise TypeError("Arguments must be a mapping")
+        if type(request.arguments) is not dict:
+            raise TypeError("Arguments must be a plain dict")
         # Validate before copying so malformed, cyclic or oversized data fails early.
-        _require_json_object(dict(request.arguments))
-        arguments = deepcopy(dict(request.arguments))
+        _require_json_object(request.arguments)
+        arguments = deepcopy(request.arguments)
         if input_schema is not None:
             Draft202012Validator.check_schema(input_schema)
             Draft202012Validator(input_schema).validate(arguments)
         result = self._handler(arguments)
-        if not isinstance(result, Mapping):
-            raise TypeError("Adapter response must be a mapping")
-        _require_json_object(dict(result))
-        response = deepcopy(dict(result))
+        if type(result) is not dict:
+            raise TypeError("Adapter response must be a plain dict")
+        _require_json_object(result)
+        response = deepcopy(result)
         if output_schema is not None:
             Draft202012Validator.check_schema(output_schema)
             Draft202012Validator(output_schema).validate(response)
