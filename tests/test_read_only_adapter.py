@@ -55,6 +55,25 @@ class ReadOnlyAdapterTests(unittest.TestCase):
         state["data"]["tags"].append("later")
         self.assertEqual(response, {"data": {"tags": ["initial"]}})
 
+    def test_non_json_input_is_rejected_before_handler(self):
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaises(TypeError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"unsafe": object()}))
+        self.assertEqual(calls, [])
+
+    def test_non_json_output_is_rejected(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"unsafe": object()})
+        with self.assertRaises(TypeError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
+    def test_nan_input_is_rejected_before_handler(self):
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaises(ValueError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"value": float("nan")}))
+        self.assertEqual(calls, [])
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)

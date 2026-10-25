@@ -1,6 +1,7 @@
 """Pure read-only adapter contract. No HTTP, credentials, or activation."""
 from dataclasses import dataclass
 from copy import deepcopy
+import json
 from typing import Any, Callable, Mapping
 
 from jsonschema import Draft202012Validator
@@ -30,6 +31,8 @@ class ReadOnlyAdapter:
         if not isinstance(request.arguments, Mapping):
             raise TypeError("Arguments must be a mapping")
         arguments = deepcopy(dict(request.arguments))
+        # Enforce a JSON-only boundary; fixture objects cannot smuggle Python instances.
+        json.dumps(arguments, allow_nan=False)
         if input_schema is not None:
             Draft202012Validator.check_schema(input_schema)
             Draft202012Validator(input_schema).validate(arguments)
@@ -37,6 +40,7 @@ class ReadOnlyAdapter:
         if not isinstance(result, Mapping):
             raise TypeError("Adapter response must be a mapping")
         response = deepcopy(dict(result))
+        json.dumps(response, allow_nan=False)
         if output_schema is not None:
             Draft202012Validator.check_schema(output_schema)
             Draft202012Validator(output_schema).validate(response)
