@@ -40,7 +40,9 @@ def _require_json_object(value: dict[str, Any]) -> None:
                 ancestors.remove(identifier)
 
     visit(value, 0)
-    json.dumps(value, allow_nan=False)
+    serialized = json.dumps(value, allow_nan=False, ensure_ascii=False)
+    if len(serialized.encode("utf-8")) > 1_048_576:
+        raise ValueError("JSON payload exceeds 1 MiB")
 
 
 class ReadOnlyAdapter:
