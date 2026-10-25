@@ -102,6 +102,32 @@ class ReadOnlyAdapterTests(unittest.TestCase):
         adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"items": [1, 2]})
         self.assertEqual(adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"items": [1, 2]})), {"items": [1, 2]})
 
+    def test_cyclic_input_rejected_before_handler(self):
+        calls = []
+        cyclic = {}
+        cyclic["self"] = cyclic
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaisesRegex(ValueError, "Circular"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", cyclic))
+        self.assertEqual(calls, [])
+
+    def test_cyclic_output_rejected(self):
+        cyclic = {}
+        cyclic["self"] = cyclic
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: cyclic)
+        with self.assertRaisesRegex(ValueError, "Circular"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
+    def test_excessively_nested_input_rejected_before_handler(self):
+        calls = []
+        nested = {}
+        for _ in range(70):
+            nested = {"child": nested}
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaisesRegex(ValueError, "nesting depth"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", nested))
+        self.assertEqual(calls, [])
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
