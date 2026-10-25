@@ -14,12 +14,12 @@ import zipfile
 def verify(archive: Path, checkout: Path):
     missing, changed, checked = [], [], 0
     with zipfile.ZipFile(archive) as source:
-        for item in sorted(source.infolist(), key=lambda x: x.filename):
-            if item.is_dir():
-                continue
-            if not item.filename.startswith("kaliv-nexus/"):
-                raise ValueError("Unexpected ZIP prefix: " + item.filename)
-            name = item.filename.removeprefix("kaliv-nexus/")
+        items = [item for item in source.infolist() if not item.is_dir()]
+        prefix = "kaliv-nexus/" if items and all(item.filename.startswith("kaliv-nexus/") for item in items) else ""
+        if not items or (not prefix and any(item.filename.startswith("kaliv-nexus/") for item in items)):
+            raise ValueError("Empty archive or mixed ZIP roots")
+        for item in sorted(items, key=lambda x: x.filename):
+            name = item.filename.removeprefix(prefix)
             if not name or name.startswith("/") or ".." in Path(name).parts:
                 raise ValueError("Unsafe ZIP path")
             target = checkout / name
