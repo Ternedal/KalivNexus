@@ -39,6 +39,22 @@ class ReadOnlyAdapterTests(unittest.TestCase):
                 output_schema={"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]},
             )
 
+    def test_nested_input_is_not_mutated_by_handler(self):
+        original = {"context": {"tags": ["private"]}}
+        def mutate(args):
+            args["context"]["tags"].append("modified")
+            return {"summary": "ok"}
+        adapter = ReadOnlyAdapter("weather.current.read", mutate)
+        adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", original))
+        self.assertEqual(original, {"context": {"tags": ["private"]}})
+
+    def test_nested_output_is_detached_from_handler_state(self):
+        state = {"data": {"tags": ["initial"]}}
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: state)
+        response = adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+        state["data"]["tags"].append("later")
+        self.assertEqual(response, {"data": {"tags": ["initial"]}})
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
