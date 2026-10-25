@@ -1,0 +1,35 @@
+"""Redacted, in-memory audit events for offline adapter fixture tests.
+
+This is not a durable or tamper-resistant audit trail.
+"""
+from dataclasses import dataclass
+from typing import Callable
+
+from scripts.adapter_manifest_harness import invoke_manifest_fixture
+from scripts.read_only_adapter import ReadOnlyAdapter
+
+
+@dataclass(frozen=True)
+class FixtureAuditEvent:
+    capability_id: str
+    outcome: str
+
+
+def invoke_with_fixture_audit(
+    manifest: dict,
+    adapter: ReadOnlyAdapter,
+    arguments: dict,
+    record: Callable[[FixtureAuditEvent], None],
+) -> dict:
+    """Record only capability ID and outcome, never input, output, or secrets."""
+    if not callable(record):
+        raise TypeError("Audit recorder must be callable")
+    identifier = manifest.get("capability_id") if isinstance(manifest, dict) else None
+    safe_id = identifier if isinstance(identifier, str) else "<invalid>"
+    try:
+        result = invoke_manifest_fixture(manifest, adapter, arguments)
+    except Exception:
+        record(FixtureAuditEvent(capability_id=safe_id, outcome="rejected"))
+        raise
+    record(FixtureAuditEvent(capability_id=safe_id, outcome="succeeded"))
+    return result
