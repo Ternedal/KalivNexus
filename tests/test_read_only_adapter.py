@@ -74,6 +74,18 @@ class ReadOnlyAdapterTests(unittest.TestCase):
             adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"value": float("nan")}))
         self.assertEqual(calls, [])
 
+    def test_non_string_nested_input_key_is_rejected(self):
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaises(TypeError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"nested": {1: "unsafe"}}))
+        self.assertEqual(calls, [])
+
+    def test_non_string_nested_output_key_is_rejected(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"nested": {1: "unsafe"}})
+        with self.assertRaises(TypeError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
