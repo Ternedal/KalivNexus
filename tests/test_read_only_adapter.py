@@ -161,6 +161,21 @@ class ReadOnlyAdapterTests(unittest.TestCase):
                 adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
             self.assertEqual(copier.call_count, 1)  # Valid input only; output never copied
 
+    def test_custom_json_encoder_hook_is_not_invoked_for_input(self):
+        class Dangerous:
+            def __repr__(self):
+                raise AssertionError("unexpected object representation")
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaises(TypeError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"nested": [Dangerous()]}))
+        self.assertEqual(calls, [])
+
+    def test_valid_json_scalars(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"items": [None, True, 1, 1.5, "text"]})
+        result = adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"items": [None, False, 0, 1.5, "text"]}))
+        self.assertEqual(result, {"items": [None, True, 1, 1.5, "text"]})
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
