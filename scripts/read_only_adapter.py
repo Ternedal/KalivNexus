@@ -14,19 +14,32 @@ class ReadOnlyRequest:
 
 
 def _require_json_object(value: dict[str, Any]) -> None:
-    """Validate JSON object keys and values without coercing key types."""
-    def visit(item: Any) -> None:
-        if isinstance(item, dict):
-            for key, child in item.items():
-                if not isinstance(key, str):
-                    raise TypeError("JSON object keys must be strings")
-                visit(child)
-        elif isinstance(item, list):
-            for child in item:
-                visit(child)
-        elif isinstance(item, tuple):
+    """Reject non-JSON containers, cycles and excessive nesting."""
+    ancestors: set[int] = set()
+
+    def visit(item: Any, depth: int) -> None:
+        if depth > 64:
+            raise ValueError("JSON payload exceeds maximum nesting depth")
+        if isinstance(item, tuple):
             raise TypeError("JSON arrays must be lists, not tuples")
-    visit(value)
+        if isinstance(item, (dict, list)):
+            identifier = id(item)
+            if identifier in ancestors:
+                raise ValueError("Circular JSON payload")
+            ancestors.add(identifier)
+            try:
+                if isinstance(item, dict):
+                    for key, child in item.items():
+                        if not isinstance(key, str):
+                            raise TypeError("JSON object keys must be strings")
+                        visit(child, depth + 1)
+                else:
+                    for child in item:
+                        visit(child, depth + 1)
+            finally:
+                ancestors.remove(identifier)
+
+    visit(value, 0)
     json.dumps(value, allow_nan=False)
 
 
