@@ -38,6 +38,10 @@ def _require_json_object(value: dict[str, Any]) -> None:
                         visit(child, depth + 1)
             finally:
                 ancestors.remove(identifier)
+        elif item is None or isinstance(item, (str, bool, int, float)):
+            return
+        else:
+            raise TypeError("JSON payload contains an unsupported scalar type")
 
     visit(value, 0)
     serialized = json.dumps(value, allow_nan=False, ensure_ascii=False)
