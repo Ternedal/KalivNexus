@@ -38,6 +38,7 @@ def main():
     p.add_argument("--repo", default="Ternedal/KalivNexus")
     p.add_argument("--branch", default="bootstrap/v0.50.0-baseline")
     p.add_argument("--apply", action="store_true", help="Actually write files; default is dry-run")
+    p.add_argument("--min-files", type=int, default=92, help="Minimum source file count; default 92 for v0.50.0")
     args = p.parse_args()
     if args.branch in ("main", "master"):
         p.error("Refusing to modify protected default branches")
@@ -54,6 +55,8 @@ def main():
     changes = []
     with zipfile.ZipFile(args.archive) as z:
         names = [n for n in z.namelist() if not n.endswith("/")]
+        if len(names) < args.min_files:
+            raise ValueError(f"Expected at least {args.min_files} source files, found {len(names)}")
         if len(names) != len(set(names)):
             raise ValueError("Duplicate ZIP entry names are not allowed")
         prefix = "kaliv-nexus/" if names and all(n.startswith("kaliv-nexus/") for n in names) else ""
@@ -64,7 +67,7 @@ def main():
             raise ValueError("Duplicate target paths are not allowed")
         for entry in sorted(names):
             path = entry[len(prefix):]
-            if not path or path.startswith("/") or ".." in path.split("/"):
+            if not path or path.startswith("/") or "\\\\" in path or ".." in path.split("/"):
                 raise ValueError("Unsafe archive path")
             info = z.getinfo(entry)
             if info.file_size > 4 * 1024 * 1024:
@@ -78,6 +81,10 @@ def main():
             except UnicodeDecodeError as exc:
                 raise ValueError(f"Non-UTF-8 file: {path}") from exc
             changes.append((path, source))
+    required = {"nexus/main.py", "nexus/mcp_relay_client.py", "tests/test_api.py", "pyproject.toml"}
+    missing_required = sorted(required - set(paths))
+    if missing_required:
+        raise ValueError("Missing required baseline files: " + ", ".join(missing_required))
     print(f"Branch: {args.branch} @ {head[:12]}")
     print(f"Different or missing baseline files: {len(changes)}")
     for path, _ in changes:
