@@ -1,6 +1,6 @@
 # KalivNexus
 
-KalivNexus is the proposed integration and capability-discovery layer for the Kaliv ecosystem. **Status: repository bootstrap / design proposal.** No runtime, API compatibility, deployed service or production readiness is asserted by this document.
+KalivNexus is the proposed integration and capability-discovery layer for the Kaliv ecosystem. **Status: offline prototype with automated contract tests; integration design remains a proposal.** No runtime, API compatibility, deployed service or production readiness is asserted by this document.
 
 ## Purpose
 
@@ -49,8 +49,8 @@ Each integration should declare a stable identifier, provider, version, input/ou
 ## Suggested documentation roadmap
 
 - [x] [Draft architecture decisions](docs/ARCHITECTURE_DECISIONS.md) for authority, manifest trust, lifecycle and release gates (not yet implementation decisions)
-- [ ] Validated registry schema and example manifests
-- [ ] Adapter SDK and contract tests
+- [x] Draft JSON Schema, example manifest and local validator (prototype only)
+- [x] Offline read-only fixture adapter, contract tests and redacted in-memory fixture audit (not a provider SDK)
 - [ ] ModelRig integration and approval flow
 - [ ] Installation, configuration and rollback runbooks
 - [ ] Observability, costs, quotas and failure modes
@@ -58,7 +58,7 @@ Each integration should declare a stable identifier, provider, version, input/ou
 
 ## Current prototype (not an active broker)
 
-The repository now contains a draft JSON Schema, a Python manifest validator, an in-memory default-deny catalog and a **SQLite-backed prototype** with registration, revocation and lifecycle events. Neither catalog has an enable or execution path. The SQLite database persists local state, but is not a hardened tamper-proof audit log or multi-user approval system. Neither implementation connects to ModelRig, resolves secrets or calls external APIs.
+The repository contains a draft JSON Schema, a Python manifest validator, an in-memory default-deny catalog and a **SQLite-backed prototype** with registration, revocation and lifecycle events. It also has a fixture-only read adapter with schema checks, strict JSON object/array validation, cycle and depth rejection, a 1 MiB serialized payload limit, defensive copies and redacted in-memory audit events with optional correlation IDs. Review-token prototypes exercise scoped HMAC claims and replay prevention in tests; they are **not** production identity or approval integration. Neither catalog has an enable or execution path. The SQLite database persists local state, but is not a hardened tamper-proof audit log or multi-user approval system. Neither implementation connects to ModelRig, resolves secrets or calls external APIs. Offline fixture handlers are ordinary injected Python callables, **not sandboxed**: do not use untrusted handlers. The JSON size check serializes input and is not a complete memory-allocation bound.
 
 To run the local contract tests with Python 3.11:
 
