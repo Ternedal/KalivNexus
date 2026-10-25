@@ -62,17 +62,17 @@ class ReadOnlyAdapter:
             raise PermissionError("Adapter capability mismatch")
         if not isinstance(request.arguments, Mapping):
             raise TypeError("Arguments must be a mapping")
+        # Validate before copying so malformed, cyclic or oversized data fails early.
+        _require_json_object(dict(request.arguments))
         arguments = deepcopy(dict(request.arguments))
-        # Enforce a JSON-only boundary; fixture objects cannot smuggle Python instances.
-        _require_json_object(arguments)
         if input_schema is not None:
             Draft202012Validator.check_schema(input_schema)
             Draft202012Validator(input_schema).validate(arguments)
         result = self._handler(arguments)
         if not isinstance(result, Mapping):
             raise TypeError("Adapter response must be a mapping")
+        _require_json_object(dict(result))
         response = deepcopy(dict(result))
-        _require_json_object(response)
         if output_schema is not None:
             Draft202012Validator.check_schema(output_schema)
             Draft202012Validator(output_schema).validate(response)
