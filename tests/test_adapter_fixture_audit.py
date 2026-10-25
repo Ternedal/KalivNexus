@@ -26,6 +26,24 @@ class FixtureAuditTests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertEqual(events, [])
 
+    def test_malformed_capability_id_is_redacted(self):
+        events = []
+        manifest = copy.deepcopy(EXAMPLE)
+        manifest["capability_id"] = "private-token\\nAuthorization: secret"
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "ok"})
+        with self.assertRaises(Exception):
+            invoke_with_fixture_audit(manifest, adapter, {}, events.append)
+        self.assertEqual(events, [FixtureAuditEvent("<invalid>", "rejected")])
+        self.assertNotIn("private-token", repr(events))
+        self.assertNotIn("secret", repr(events))
+
+    def test_valid_capability_id_remains_visible_on_rejection(self):
+        events = []
+        adapter = ReadOnlyAdapter("other.capability", lambda args: {"summary": "ok"})
+        with self.assertRaises(PermissionError):
+            invoke_with_fixture_audit(EXAMPLE, adapter, {}, events.append)
+        self.assertEqual(events, [FixtureAuditEvent("weather.current.read", "rejected")])
+
     def test_success_does_not_log_payload(self):
         events = []
         adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "private-result"})
