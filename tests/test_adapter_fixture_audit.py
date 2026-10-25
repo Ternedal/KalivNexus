@@ -11,6 +11,21 @@ EXAMPLE = json.loads((Path(__file__).resolve().parents[1] / "examples/weather-re
 
 
 class FixtureAuditTests(unittest.TestCase):
+    def test_correlation_id_is_recorded_without_payload(self):
+        events = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "Clear"})
+        invoke_with_fixture_audit(EXAMPLE, adapter, {"location": "private"}, events.append, correlation_id="request-123")
+        self.assertEqual(events, [FixtureAuditEvent("weather.current.read", "succeeded", "request-123")])
+
+    def test_invalid_correlation_id_rejected_before_handler(self):
+        events = []
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "Clear"})
+        with self.assertRaises(ValueError):
+            invoke_with_fixture_audit(EXAMPLE, adapter, {}, events.append, correlation_id="secret value")
+        self.assertEqual(calls, [])
+        self.assertEqual(events, [])
+
     def test_success_does_not_log_payload(self):
         events = []
         adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "private-result"})
