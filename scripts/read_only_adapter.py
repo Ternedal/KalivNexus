@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
+from jsonschema import Draft202012Validator
+
 
 @dataclass(frozen=True)
 class ReadOnlyRequest:
@@ -20,13 +22,21 @@ class ReadOnlyAdapter:
         self.capability_id = capability_id
         self._handler = handler
 
-    def invoke_for_test(self, request: ReadOnlyRequest) -> dict[str, Any]:
+    def invoke_for_test(self, request: ReadOnlyRequest, *, input_schema=None, output_schema=None) -> dict[str, Any]:
         """Exercise a fixture handler, never a live provider."""
         if request.capability_id != self.capability_id:
             raise PermissionError("Adapter capability mismatch")
         if not isinstance(request.arguments, Mapping):
             raise TypeError("Arguments must be a mapping")
-        result = self._handler(dict(request.arguments))
+        arguments = dict(request.arguments)
+        if input_schema is not None:
+            Draft202012Validator.check_schema(input_schema)
+            Draft202012Validator(input_schema).validate(arguments)
+        result = self._handler(arguments)
         if not isinstance(result, Mapping):
             raise TypeError("Adapter response must be a mapping")
-        return dict(result)
+        response = dict(result)
+        if output_schema is not None:
+            Draft202012Validator.check_schema(output_schema)
+            Draft202012Validator(output_schema).validate(response)
+        return response

@@ -1,5 +1,6 @@
 """Offline adapter contract tests: no external network or secret access."""
 import unittest
+from jsonschema import ValidationError
 
 from scripts.read_only_adapter import ReadOnlyAdapter, ReadOnlyRequest
 
@@ -19,6 +20,24 @@ class ReadOnlyAdapterTests(unittest.TestCase):
         adapter = ReadOnlyAdapter("weather.current.read", lambda args: "not an object")
         with self.assertRaises(TypeError):
             adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
+    def test_input_schema_rejects_invalid_arguments(self):
+        called = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: called.append(args) or {"summary": "ok"})
+        with self.assertRaises(ValidationError):
+            adapter.invoke_for_test(
+                ReadOnlyRequest("weather.current.read", {"location": 42}),
+                input_schema={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+            )
+        self.assertEqual(called, [])
+
+    def test_output_schema_rejects_invalid_response(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": 42})
+        with self.assertRaises(ValidationError):
+            adapter.invoke_for_test(
+                ReadOnlyRequest("weather.current.read", {}),
+                output_schema={"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]},
+            )
 
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
