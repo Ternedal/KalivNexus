@@ -31,7 +31,8 @@ def invoke_with_fixture_audit(
     if not callable(record):
         raise TypeError("Audit recorder must be callable")
     identifier = manifest.get("capability_id") if isinstance(manifest, dict) else None
-    safe_id = identifier if isinstance(identifier, str) else "<invalid>"
+    # Never emit unvalidated, attacker-controlled manifest text to audit sinks.
+    safe_id = identifier if isinstance(identifier, str) and re.fullmatch(r"[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+", identifier) and len(identifier) <= 120 else "<invalid>"
     try:
         result = invoke_manifest_fixture(manifest, adapter, arguments)
     except Exception:
