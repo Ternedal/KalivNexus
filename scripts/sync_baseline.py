@@ -54,13 +54,21 @@ def main():
     changes = []
     with zipfile.ZipFile(args.archive) as z:
         names = [n for n in z.namelist() if not n.endswith("/")]
+        if len(names) != len(set(names)):
+            raise ValueError("Duplicate ZIP entry names are not allowed")
         prefix = "kaliv-nexus/" if names and all(n.startswith("kaliv-nexus/") for n in names) else ""
         if not names or (prefix == "" and any(n.startswith("kaliv-nexus/") for n in names)):
             raise ValueError("Archive is empty or has mixed root layouts")
+        paths = [entry[len(prefix):] for entry in names]
+        if len(paths) != len(set(paths)):
+            raise ValueError("Duplicate target paths are not allowed")
         for entry in sorted(names):
             path = entry[len(prefix):]
             if not path or path.startswith("/") or ".." in path.split("/"):
                 raise ValueError("Unsafe archive path")
+            info = z.getinfo(entry)
+            if info.file_size > 4 * 1024 * 1024:
+                raise ValueError(f"Baseline file too large: {path}")
             data = z.read(entry)
             git_blob_sha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
             if existing.get(path) == git_blob_sha:
@@ -88,6 +96,9 @@ def main():
         "tree": new_tree, "parents": [head],
     })["sha"]
     ref_url = base + "/git/refs/heads/" + urllib.parse.quote(args.branch, safe="/")
+    current = request("GET", base + "/branches/" + urllib.parse.quote(args.branch, safe=""), token)["commit"]["sha"]
+    if current != head:
+        raise RuntimeError("Branch moved during import; refusing to update ref")
     # GitHub rejects non-fast-forward updates. No force push.
     request("PATCH", ref_url, token, {"sha": commit, "force": False})
     print(f"Committed {len(changes)} files: {commit}")
