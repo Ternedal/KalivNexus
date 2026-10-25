@@ -155,9 +155,11 @@ class ReadOnlyAdapterTests(unittest.TestCase):
     def test_invalid_output_rejected_before_deepcopy(self):
         from unittest.mock import patch
         adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"data": "x" * 1_048_576})
-        with patch("scripts.read_only_adapter.deepcopy", side_effect=AssertionError("deepcopy called")):
+        from copy import deepcopy as original_deepcopy
+        with patch("scripts.read_only_adapter.deepcopy", wraps=original_deepcopy) as copier:
             with self.assertRaises(ValueError):
                 adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+            self.assertEqual(copier.call_count, 1)  # Valid input only; output never copied
 
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
