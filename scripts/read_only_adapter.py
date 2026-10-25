@@ -1,5 +1,6 @@
 """Pure read-only adapter contract. No HTTP, credentials, or activation."""
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import Any, Callable, Mapping
 
 from jsonschema import Draft202012Validator
@@ -28,14 +29,14 @@ class ReadOnlyAdapter:
             raise PermissionError("Adapter capability mismatch")
         if not isinstance(request.arguments, Mapping):
             raise TypeError("Arguments must be a mapping")
-        arguments = dict(request.arguments)
+        arguments = deepcopy(dict(request.arguments))
         if input_schema is not None:
             Draft202012Validator.check_schema(input_schema)
             Draft202012Validator(input_schema).validate(arguments)
         result = self._handler(arguments)
         if not isinstance(result, Mapping):
             raise TypeError("Adapter response must be a mapping")
-        response = dict(result)
+        response = deepcopy(dict(result))
         if output_schema is not None:
             Draft202012Validator.check_schema(output_schema)
             Draft202012Validator(output_schema).validate(response)
