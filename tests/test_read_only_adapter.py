@@ -145,6 +145,20 @@ class ReadOnlyAdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "1 MiB"):
             adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"data": "ø" * 600_000}))
 
+    def test_invalid_input_rejected_before_deepcopy(self):
+        from unittest.mock import patch
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "ok"})
+        with patch("scripts.read_only_adapter.deepcopy", side_effect=AssertionError("deepcopy called")):
+            with self.assertRaises(ValueError):
+                adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"data": "x" * 1_048_576}))
+
+    def test_invalid_output_rejected_before_deepcopy(self):
+        from unittest.mock import patch
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"data": "x" * 1_048_576})
+        with patch("scripts.read_only_adapter.deepcopy", side_effect=AssertionError("deepcopy called")):
+            with self.assertRaises(ValueError):
+                adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
