@@ -86,6 +86,22 @@ class ReadOnlyAdapterTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
 
+    def test_nested_tuple_input_rejected_before_handler(self):
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaises(TypeError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"nested": {"items": (1, 2)}}))
+        self.assertEqual(calls, [])
+
+    def test_nested_tuple_output_rejected(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"nested": {"items": (1, 2)}})
+        with self.assertRaises(TypeError):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
+    def test_json_list_remains_valid(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"items": [1, 2]})
+        self.assertEqual(adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"items": [1, 2]})), {"items": [1, 2]})
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
