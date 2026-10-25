@@ -21,9 +21,11 @@ def _require_json_object(value: dict[str, Any]) -> None:
                 if not isinstance(key, str):
                     raise TypeError("JSON object keys must be strings")
                 visit(child)
-        elif isinstance(item, (list, tuple)):
+        elif isinstance(item, list):
             for child in item:
                 visit(child)
+        elif isinstance(item, tuple):
+            raise TypeError("JSON arrays must be lists, not tuples")
     visit(value)
     json.dumps(value, allow_nan=False)
 
