@@ -5,11 +5,9 @@ Uses only Python's standard library. Does not create PRs or touch main.
 Requires GITHUB_TOKEN and an existing target branch.
 """
 import argparse
-import base64
 import hashlib
 import json
 import os
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -41,8 +39,8 @@ def main():
     p.add_argument("--branch", default="bootstrap/v0.50.0-baseline")
     p.add_argument("--apply", action="store_true", help="Actually write files; default is dry-run")
     args = p.parse_args()
-    if args.branch == "main":
-        p.error("Refusing to modify main")
+    if args.branch in ("main", "master"):
+        p.error("Refusing to modify protected default branches")
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         p.error("GITHUB_TOKEN must be set")
@@ -55,10 +53,12 @@ def main():
     existing = {entry["path"]: entry["sha"] for entry in tree["tree"] if entry["type"] == "blob"}
     changes = []
     with zipfile.ZipFile(args.archive) as z:
-        for entry in sorted(z.namelist()):
-            if not entry.startswith("kaliv-nexus/") or entry.endswith("/"):
-                continue
-            path = entry[len("kaliv-nexus/"):]
+        names = [n for n in z.namelist() if not n.endswith("/")]
+        prefix = "kaliv-nexus/" if names and all(n.startswith("kaliv-nexus/") for n in names) else ""
+        if not names or (prefix == "" and any(n.startswith("kaliv-nexus/") for n in names)):
+            raise ValueError("Archive is empty or has mixed root layouts")
+        for entry in sorted(names):
+            path = entry[len(prefix):]
             if not path or path.startswith("/") or ".." in path.split("/"):
                 raise ValueError("Unsafe archive path")
             data = z.read(entry)
