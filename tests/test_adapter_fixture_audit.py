@@ -20,6 +20,23 @@ class FixtureAuditTests(unittest.TestCase):
         self.assertNotIn("secret-location", repr(events))
         self.assertNotIn("private-result", repr(events))
 
+    def test_handler_failure_is_audited_without_error_details(self):
+        events = []
+        def failing_handler(args):
+            raise RuntimeError("provider secret must not enter audit")
+        adapter = ReadOnlyAdapter("weather.current.read", failing_handler)
+        with self.assertRaisesRegex(RuntimeError, "provider secret"):
+            invoke_with_fixture_audit(EXAMPLE, adapter, {"location": "private"}, events.append)
+        self.assertEqual(events, [FixtureAuditEvent("weather.current.read", "rejected")])
+        self.assertNotIn("provider secret", repr(events))
+
+    def test_recorder_failure_is_not_silently_ignored(self):
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "Clear"})
+        def failing_recorder(event):
+            raise RuntimeError("audit unavailable")
+        with self.assertRaisesRegex(RuntimeError, "audit unavailable"):
+            invoke_with_fixture_audit(EXAMPLE, adapter, {}, failing_recorder)
+
     def test_rejection_audited_without_payload(self):
         events = []
         manifest = copy.deepcopy(EXAMPLE)
