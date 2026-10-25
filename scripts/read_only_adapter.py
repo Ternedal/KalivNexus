@@ -13,6 +13,21 @@ class ReadOnlyRequest:
     arguments: Mapping[str, Any]
 
 
+def _require_json_object(value: dict[str, Any]) -> None:
+    """Validate JSON object keys and values without coercing key types."""
+    def visit(item: Any) -> None:
+        if isinstance(item, dict):
+            for key, child in item.items():
+                if not isinstance(key, str):
+                    raise TypeError("JSON object keys must be strings")
+                visit(child)
+        elif isinstance(item, (list, tuple)):
+            for child in item:
+                visit(child)
+    visit(value)
+    json.dumps(value, allow_nan=False)
+
+
 class ReadOnlyAdapter:
     """An injected, offline callable with an explicit capability binding."""
 
@@ -32,7 +47,7 @@ class ReadOnlyAdapter:
             raise TypeError("Arguments must be a mapping")
         arguments = deepcopy(dict(request.arguments))
         # Enforce a JSON-only boundary; fixture objects cannot smuggle Python instances.
-        json.dumps(arguments, allow_nan=False)
+        _require_json_object(arguments)
         if input_schema is not None:
             Draft202012Validator.check_schema(input_schema)
             Draft202012Validator(input_schema).validate(arguments)
@@ -40,7 +55,7 @@ class ReadOnlyAdapter:
         if not isinstance(result, Mapping):
             raise TypeError("Adapter response must be a mapping")
         response = deepcopy(dict(result))
-        json.dumps(response, allow_nan=False)
+        _require_json_object(response)
         if output_schema is not None:
             Draft202012Validator.check_schema(output_schema)
             Draft202012Validator(output_schema).validate(response)
