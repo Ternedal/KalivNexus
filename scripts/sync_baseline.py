@@ -40,7 +40,7 @@ def main():
     p.add_argument("--apply", action="store_true", help="Actually write files; default is dry-run")
     p.add_argument("--min-files", type=int, default=92, help="Minimum source file count; default 92 for v0.50.0")
     args = p.parse_args()
-    if args.branch in ("main", "master"):
+    if args.branch in ("main", "master") or not args.branch.startswith("bootstrap/"):
         p.error("Refusing to modify protected default branches")
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
@@ -57,6 +57,8 @@ def main():
         names = [n for n in z.namelist() if not n.endswith("/")]
         if len(names) < args.min_files:
             raise ValueError(f"Expected at least {args.min_files} source files, found {len(names)}")
+        if len(names) > 2000:
+            raise ValueError("Too many archive entries")
         if len(names) != len(set(names)):
             raise ValueError("Duplicate ZIP entry names are not allowed")
         prefix = "kaliv-nexus/" if names and all(n.startswith("kaliv-nexus/") for n in names) else ""
@@ -67,9 +69,11 @@ def main():
             raise ValueError("Duplicate target paths are not allowed")
         for entry in sorted(names):
             path = entry[len(prefix):]
-            if not path or path.startswith("/") or "\\\\" in path or ".." in path.split("/"):
+            if not path or path.startswith("/") or chr(92) in path or ".." in path.split("/"):
                 raise ValueError("Unsafe archive path")
             info = z.getinfo(entry)
+            if info.external_attr >> 16 & 0o170000 == 0o120000:
+                raise ValueError(f"Symlink entries are forbidden: {path}")
             if info.file_size > 4 * 1024 * 1024:
                 raise ValueError(f"Baseline file too large: {path}")
             data = z.read(entry)
