@@ -29,12 +29,21 @@ def build_catalog(paths: list[str]) -> list[dict[str, str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="List disabled KalivNexus capabilities from local manifests")
     parser.add_argument("manifests", nargs="+", help="Local manifest JSON files or directories containing *.manifest.json files")
+    parser.add_argument("--output", type=Path, help="Write redacted JSON catalog to a new file (never overwrite)")
     args = parser.parse_args()
     try:
         entries = build_catalog(args.manifests)
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
         parser.exit(1, f"Invalid manifest catalog: {type(exc).__name__}\n")
-    print(json.dumps({"capabilities": entries}, sort_keys=True))
+    payload = json.dumps({"capabilities": entries}, sort_keys=True) + "\n"
+    if args.output is not None:
+        try:
+            with args.output.open("x", encoding="utf-8") as destination:
+                destination.write(payload)
+        except OSError as exc:
+            parser.exit(1, f"Cannot write catalog: {type(exc).__name__}\n")
+    else:
+        print(payload, end="")
     return 0
 
 
