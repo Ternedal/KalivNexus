@@ -1,5 +1,6 @@
 """Offline manifest catalog CLI contract tests."""
 import json
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -26,6 +27,29 @@ class ManifestCatalogCliTests(unittest.TestCase):
             path.write_text(json.dumps({"capability_id": "bad"}), encoding="utf-8")
             with self.assertRaises(Exception):
                 build_catalog([str(path)])
+
+    def test_directory_discovers_only_manifest_files(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copyfile(EXAMPLE, root / "weather.manifest.json")
+            (root / "ignore.json").write_text("not json", encoding="utf-8")
+            (root / "nested").mkdir()
+            (root / "nested" / "invalid.manifest.json").write_text("not json", encoding="utf-8")
+            self.assertEqual(build_catalog([directory]), [
+                {"capability_id": "weather.current.read", "status": "disabled"}
+            ])
+
+    def test_empty_directory_rejected(self):
+        with TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "no \\*\\.manifest\\.json"):
+                build_catalog([directory])
+
+    def test_directory_and_explicit_duplicate_rejected(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "weather.manifest.json"
+            shutil.copyfile(EXAMPLE, path)
+            with self.assertRaisesRegex(ValueError, "already registered"):
+                build_catalog([directory, str(path)])
 
     def test_missing_manifest_is_rejected(self):
         with TemporaryDirectory() as directory:
