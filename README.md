@@ -66,9 +66,10 @@ To run the local contract tests with Python 3.11:
 python -m pip install 'jsonschema==4.23.0'
 python -m unittest discover -s tests -p 'test_*.py' -v
 python scripts/validate_manifest.py examples/weather-readonly.manifest.json
+python -m scripts.list_manifest_catalog examples/weather-readonly.manifest.json
 ```
 
-The [CI workflow](.github/workflows/validate-manifests.yml) is configured to run these checks, but a passing CI run must be confirmed separately.
+The catalog command validates local manifests and prints only capability IDs and their disabled status. It does not activate or invoke providers.\n\nThe [CI workflow](.github/workflows/validate-manifests.yml) is configured to run these checks, but a passing CI run must be confirmed separately.
 
 ## Release discipline
 
