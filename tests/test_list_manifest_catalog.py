@@ -88,6 +88,28 @@ class ManifestCatalogCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {"capabilities": []})
 
+    def test_symlinked_manifest_file_rejected(self):
+        with TemporaryDirectory() as directory:
+            link = Path(directory) / "linked.manifest.json"
+            try:
+                link.symlink_to(EXAMPLE)
+            except (OSError, NotImplementedError):
+                self.skipTest("Symbolic links unavailable")
+            with self.assertRaisesRegex(ValueError, "symbolic links"):
+                build_catalog([str(link)])
+            with self.assertRaisesRegex(ValueError, "symbolic links"):
+                build_catalog([directory])
+
+    def test_symlinked_directory_rejected(self):
+        with TemporaryDirectory() as directory:
+            link = Path(directory) / "linked-dir"
+            try:
+                link.symlink_to(EXAMPLE.parent, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("Symbolic links unavailable")
+            with self.assertRaisesRegex(ValueError, "symbolic links"):
+                build_catalog([str(link)])
+
     def test_missing_manifest_is_rejected(self):
         with TemporaryDirectory() as directory:
             with self.assertRaises(FileNotFoundError):
