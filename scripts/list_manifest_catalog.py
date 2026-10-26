@@ -1,6 +1,7 @@
 """Inspect validated manifests offline; registration never activates a provider."""
 import argparse
 import json
+import os
 from pathlib import Path
 
 from scripts.manifest_registry import ManifestRegistry
@@ -44,7 +45,9 @@ def main() -> int:
     payload = json.dumps({"capabilities": entries}, sort_keys=True) + "\n"
     if args.output is not None:
         try:
-            with args.output.open("x", encoding="utf-8") as destination:
+            # Exclusive creation prevents overwrites and uses private file permissions.
+            fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as destination:
                 destination.write(payload)
         except OSError as exc:
             parser.exit(1, f"Cannot write catalog: {type(exc).__name__}\n")
