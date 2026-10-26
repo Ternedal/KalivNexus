@@ -5,7 +5,18 @@ from pathlib import Path
 
 
 def read_catalog(path: str | Path) -> set[str]:
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    source = Path(path)
+    if source.is_symlink():
+        raise ValueError("Catalog input must not be a symbolic link")
+    if not source.is_file():
+        raise ValueError("Catalog input must be a regular file")
+    if source.stat().st_size > 1_048_576:
+        raise ValueError("Catalog input exceeds 1 MiB")
+    with source.open("rb") as stream:
+        raw = stream.read(1_048_577)
+    if len(raw) > 1_048_576:
+        raise ValueError("Catalog input exceeds 1 MiB")
+    data = json.loads(raw.decode("utf-8"))
     if type(data) is not dict or set(data) != {"capabilities"}:
         raise ValueError("Catalog must contain only capabilities")
     entries = data["capabilities"]
