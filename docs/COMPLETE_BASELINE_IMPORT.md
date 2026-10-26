@@ -62,3 +62,25 @@ GitHub bootstrap branch. The original release archive and the flat-root
 verified-source archive are both supported by the sync script. The importer
 must be run to reconcile all 92 original files, then branch CI must pass before
 merging. Never interpret this source-archive result as a branch CI pass.
+
+## Pinned archive digests (2026-10-26)
+
+Two valid archive layouts exist, with **different ZIP SHA-256 digests** but the
+same intended 92-file source tree. Supply the matching digest to prevent
+accidentally importing the wrong archive:
+
+| Archive | SHA-256 |
+| --- | --- |
+| `kaliv-nexus-v0.50.0.zip` (original `kaliv-nexus/` prefix) | `0d7316678733c8f4d7fdfe59f2c59afe02cd61562a05b551f8e61b334fe403e1` |
+| `KalivNexus-v0.50.0-verified-source.zip` (flat root) | `9d4215ee40696860221ed3fa8ee7cb9bbe659339ef7a918c280d786da329e60f` |
+
+Example dry-run for the verified flat-root archive:
+
+```bash
+python scripts/sync_baseline.py ./KalivNexus-v0.50.0-verified-source.zip \\
+  --archive-sha256 9d4215ee40696860221ed3fa8ee7cb9bbe659339ef7a918c280d786da329e60f
+```
+
+Only after reviewing the dry-run, repeat with `--apply` using a token scoped
+to this repository. Expected Git blob SHA of `nexus/main.py`:
+`338d502ea3f9e0353157226c2d60910c6d26807a`.
