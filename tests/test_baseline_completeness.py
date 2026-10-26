@@ -64,7 +64,7 @@ def test_main_entrypoint_matches_verified_v050_source():
     assert source.is_file(), "Original v0.50.0 nexus/main.py is not imported"
     data = source.read_bytes()
     assert len(data) == 19899, "Unexpected nexus/main.py size"
-    git_blob_sha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\\0" + data).hexdigest()
+    git_blob_sha = hashlib.sha1(b"blob " + str(len(data)).encode() + bytes([0]) + data).hexdigest()
     assert git_blob_sha == "338d502ea3f9e0353157226c2d60910c6d26807a", (
         "nexus/main.py does not match the verified v0.50.0 original"
     )
