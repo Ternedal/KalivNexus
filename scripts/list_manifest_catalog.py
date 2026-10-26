@@ -6,7 +6,7 @@ from pathlib import Path
 from scripts.manifest_registry import ManifestRegistry
 
 
-def build_catalog(paths: list[str]) -> list[dict[str, str]]:
+def build_catalog(paths: list[str], *, prefix: str | None = None) -> list[dict[str, str]]:
     """Load explicit files or a directory of *.manifest.json files, without recursion."""
     registry = ManifestRegistry()
     for raw_path in paths:
@@ -23,16 +23,18 @@ def build_catalog(paths: list[str]) -> list[dict[str, str]]:
             if not file.is_file():
                 raise ValueError("Manifest path is not a regular file")
             registry.register_file(file)
-    return registry.list_capabilities()
+    entries = registry.list_capabilities()
+    return [entry for entry in entries if entry["capability_id"].startswith(prefix)] if prefix is not None else entries
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="List disabled KalivNexus capabilities from local manifests")
     parser.add_argument("manifests", nargs="+", help="Local manifest JSON files or directories containing *.manifest.json files")
+    parser.add_argument("--prefix", help="Filter validated capability IDs by literal prefix")
     parser.add_argument("--output", type=Path, help="Write redacted JSON catalog to a new file (never overwrite)")
     args = parser.parse_args()
     try:
-        entries = build_catalog(args.manifests)
+        entries = build_catalog(args.manifests, prefix=args.prefix)
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
         parser.exit(1, f"Invalid manifest catalog: {type(exc).__name__}\n")
     payload = json.dumps({"capabilities": entries}, sort_keys=True) + "\n"
