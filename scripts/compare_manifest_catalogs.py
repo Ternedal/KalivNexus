@@ -49,7 +49,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         changes = compare_catalogs(args.before, args.after)
-    except (OSError, ValueError, TypeError) as exc:
+    except (OSError, ValueError, TypeError, UnicodeError) as exc:
         parser.exit(1, f"Invalid catalog comparison: {type(exc).__name__}\n")
     print(json.dumps(changes, sort_keys=True))
     return 2 if args.fail_on_change and (changes["added"] or changes["removed"]) else 0
