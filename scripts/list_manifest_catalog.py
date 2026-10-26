@@ -11,6 +11,8 @@ def build_catalog(paths: list[str], *, prefix: str | None = None) -> list[dict[s
     registry = ManifestRegistry()
     for raw_path in paths:
         path = Path(raw_path)
+        if path.is_symlink():
+            raise ValueError("Manifest paths must not be symbolic links")
         if path.is_dir():
             files = sorted(path.glob("*.manifest.json"))
             if not files:
@@ -20,6 +22,8 @@ def build_catalog(paths: list[str], *, prefix: str | None = None) -> list[dict[s
                 raise FileNotFoundError("Manifest file does not exist")
             files = [path]
         for file in files:
+            if file.is_symlink():
+                raise ValueError("Manifest files must not be symbolic links")
             if not file.is_file():
                 raise ValueError("Manifest path is not a regular file")
             registry.register_file(file)
