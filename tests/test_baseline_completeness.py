@@ -3,6 +3,7 @@
 These checks intentionally fail until the original application entry point and
 the key runtime modules are imported. They do not claim behavioral equivalence.
 """
+import hashlib
 from importlib.util import find_spec
 from pathlib import Path
 
@@ -55,3 +56,15 @@ def test_fastapi_entrypoint_has_expected_app():
     from fastapi import FastAPI
 
     assert isinstance(app, FastAPI)
+
+
+def test_main_entrypoint_matches_verified_v050_source():
+    """Do not accept a placeholder or reconstructed application entry point."""
+    source = ROOT / "nexus/main.py"
+    assert source.is_file(), "Original v0.50.0 nexus/main.py is not imported"
+    data = source.read_bytes()
+    assert len(data) == 19899, "Unexpected nexus/main.py size"
+    git_blob_sha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\\0" + data).hexdigest()
+    assert git_blob_sha == "338d502ea3f9e0353157226c2d60910c6d26807a", (
+        "nexus/main.py does not match the verified v0.50.0 original"
+    )
