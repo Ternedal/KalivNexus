@@ -176,6 +176,25 @@ class ReadOnlyAdapterTests(unittest.TestCase):
         result = adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"items": [None, False, 0, 1.5, "text"]}))
         self.assertEqual(result, {"items": [None, True, 1, 1.5, "text"]})
 
+    def test_custom_mapping_input_rejected_without_iteration(self):
+        from collections.abc import Mapping
+        class UnsafeMapping(Mapping):
+            def __iter__(self):
+                raise AssertionError("must not iterate")
+            def __len__(self):
+                raise AssertionError("must not measure")
+            def __getitem__(self, key):
+                raise AssertionError("must not access")
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"summary": "ok"})
+        with self.assertRaisesRegex(TypeError, "plain dict"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", UnsafeMapping()))
+
+    def test_custom_mapping_output_rejected(self):
+        from collections import UserDict
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: UserDict({"summary": "ok"}))
+        with self.assertRaisesRegex(TypeError, "plain dict"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)
