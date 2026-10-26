@@ -1,5 +1,7 @@
 """Tests for offline capability catalog comparison."""
 import json
+import subprocess
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -42,6 +44,28 @@ class CatalogComparisonTests(unittest.TestCase):
                 path = self.write(directory, "invalid.json", entries)
                 with self.assertRaises(ValueError):
                     read_catalog(path)
+
+    def test_cli_fail_on_change_exit_code(self):
+        with TemporaryDirectory() as directory:
+            before = self.write(directory, "before.json", [])
+            after = self.write(directory, "after.json", [
+                {"capability_id": "weather.current.read", "status": "disabled"}
+            ])
+            command = [sys.executable, "-m", "scripts.compare_manifest_catalogs",
+                       str(before), str(after)]
+            default = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(default.returncode, 0, default.stderr)
+            strict = subprocess.run(command + ["--fail-on-change"], capture_output=True, text=True)
+            self.assertEqual(strict.returncode, 2, strict.stderr)
+            self.assertEqual(json.loads(strict.stdout), {
+                "added": ["weather.current.read"], "removed": []
+            })
+            same = subprocess.run(
+                [sys.executable, "-m", "scripts.compare_manifest_catalogs",
+                 str(before), str(before), "--fail-on-change"],
+                capture_output=True, text=True
+            )
+            self.assertEqual(same.returncode, 0, same.stderr)
 
     def test_rejects_malformed_shape(self):
         with TemporaryDirectory() as directory:
