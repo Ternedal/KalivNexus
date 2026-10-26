@@ -195,6 +195,22 @@ class ReadOnlyAdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "plain dict"):
             adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
 
+    def test_nested_dict_subclass_is_rejected(self):
+        class CustomDict(dict):
+            pass
+        calls = []
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: calls.append(args) or {"summary": "ok"})
+        with self.assertRaisesRegex(TypeError, "plain dicts or lists"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {"nested": CustomDict({"a": 1})}))
+        self.assertEqual(calls, [])
+
+    def test_nested_list_subclass_is_rejected(self):
+        class CustomList(list):
+            pass
+        adapter = ReadOnlyAdapter("weather.current.read", lambda args: {"items": CustomList([1, 2])})
+        with self.assertRaisesRegex(TypeError, "plain dicts or lists"):
+            adapter.invoke_for_test(ReadOnlyRequest("weather.current.read", {}))
+
     def test_invalid_handler_rejected(self):
         with self.assertRaises(TypeError):
             ReadOnlyAdapter("weather.current.read", None)

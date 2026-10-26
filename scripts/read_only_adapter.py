@@ -20,15 +20,17 @@ def _require_json_object(value: dict[str, Any]) -> None:
     def visit(item: Any, depth: int) -> None:
         if depth > 64:
             raise ValueError("JSON payload exceeds maximum nesting depth")
-        if isinstance(item, tuple):
+        if type(item) is tuple:
             raise TypeError("JSON arrays must be lists, not tuples")
-        if isinstance(item, (dict, list)):
+        if isinstance(item, (dict, list)) and type(item) not in (dict, list):
+            raise TypeError("JSON containers must be plain dicts or lists")
+        if type(item) in (dict, list):
             identifier = id(item)
             if identifier in ancestors:
                 raise ValueError("Circular JSON payload")
             ancestors.add(identifier)
             try:
-                if isinstance(item, dict):
+                if type(item) is dict:
                     for key, child in item.items():
                         if not isinstance(key, str):
                             raise TypeError("JSON object keys must be strings")
