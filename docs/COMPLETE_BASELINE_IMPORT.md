@@ -41,7 +41,7 @@ isolation jobs. A passing run on the **original ZIP** is not evidence that the
 imported branch passes. In particular, verify `nexus/main.py` and every test
 are present before treating the branch as deployable.
 
-## Current limitation
+## Limitation at the time of writing (resolved 2026-10-26, see the end of this page)
 
 This chat session does not have a GitHub API token in its local execution
 environment. The GitHub connector can write individual files, but cannot
@@ -84,3 +84,34 @@ python scripts/sync_baseline.py ./KalivNexus-v0.50.0-verified-source.zip \\
 Only after reviewing the dry-run, repeat with `--apply` using a token scoped
 to this repository. Expected Git blob SHA of `nexus/main.py`:
 `338d502ea3f9e0353157226c2d60910c6d26807a`.
+
+## Reconciliation result (2026-10-26, #22)
+
+The import has been executed on `bootstrap/v0.50.0-baseline`, with git instead
+of `sync_baseline.py --apply`. The resulting tree is the same, and no token was needed.
+
+- **Archive:** `KalivNexus-v0.50.0-verified-source.zip`, 89,318 bytes, SHA-256
+  `9d4215ee40696860221ed3fa8ee7cb9bbe659339ef7a918c280d786da329e60f`, equal to the pin
+  above. It has 92 entries, a flat root, and no directories, symlinks, unsafe
+  paths or encryption.
+- **Before the import:** compared with `df84ad519`, 83 files were identical,
+  8 differed and 1 was missing (`nexus/main.py`, blob
+  `338d502ea3f9e0353157226c2d60910c6d26807a`, as pinned). Seven of the eight
+  differences were whitespace or docstring only. The other two were
+  `README.md` and `.github/workflows/ci.yml`.
+- **Commit `bf63224af`, the verbatim reconciliation:** `scripts/verify_baseline.py`,
+  run on a clean worktree of this commit, reports 92 matching, 0 missing,
+  0 modified, **PASS**. `python -m pytest -q` reports 285 passed.
+- **Commit `faf1dd713`, the one declared divergence:** `.github/workflows/ci.yml`
+  keeps the repository's hardened workflow (`permissions: contents: read`,
+  concurrency, a 15-minute timeout, `compileall`). Restoring the archive's minimal
+  workflow would have weakened CI. From this commit on, `verify_baseline.py`
+  reports exactly one `DIFFERENT` file, and it is this one.
+- **`README.md`:** the original archive README is kept on this branch. The
+  ecosystem and authority text that `main` had in its README is preserved
+  verbatim in [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) and marked
+  as a proposal.
+- **Docker isolation:** the v0.50.0 probe could not parse `/proc/net/ipv6_route`,
+  so the isolation job always failed. The fix is PR #37 against this branch.
+
+Merging this branch into `main` still requires Anders' explicit approval.
