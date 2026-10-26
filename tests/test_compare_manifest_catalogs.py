@@ -67,6 +67,25 @@ class CatalogComparisonTests(unittest.TestCase):
             )
             self.assertEqual(same.returncode, 0, same.stderr)
 
+    def test_cli_summary_counts(self):
+        with TemporaryDirectory() as directory:
+            before = self.write(directory, "before.json", [
+                {"capability_id": "old.read", "status": "disabled"}
+            ])
+            after = self.write(directory, "after.json", [
+                {"capability_id": "new.read", "status": "disabled"}
+            ])
+            result = subprocess.run(
+                [sys.executable, "-m", "scripts.compare_manifest_catalogs",
+                 str(before), str(after), "--summary", "--fail-on-change"],
+                capture_output=True, text=True
+            )
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertEqual(json.loads(result.stdout), {
+                "added": ["new.read"], "removed": ["old.read"],
+                "counts": {"added": 1, "removed": 1}
+            })
+
     def test_rejects_oversized_input(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "huge.json"
