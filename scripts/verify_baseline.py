@@ -18,11 +18,19 @@ def verify(archive: Path, checkout: Path):
         prefix = "kaliv-nexus/" if items and all(item.filename.startswith("kaliv-nexus/") for item in items) else ""
         if not items or (not prefix and any(item.filename.startswith("kaliv-nexus/") for item in items)):
             raise ValueError("Empty archive or mixed ZIP roots")
+        names = [item.filename.removeprefix(prefix) for item in items]
+        if len(names) != 92 or len(names) != len(set(names)):
+            raise ValueError("Expected exactly 92 unique v0.50.0 source files")
         for item in sorted(items, key=lambda x: x.filename):
             name = item.filename.removeprefix(prefix)
-            if not name or name.startswith("/") or ".." in Path(name).parts:
+            if (not name or name.startswith("/") or chr(92) in name
+                    or "." in Path(name).parts or ".." in Path(name).parts):
                 raise ValueError("Unsafe ZIP path")
+            if item.external_attr >> 16 & 0o170000 == 0o120000:
+                raise ValueError("ZIP symlinks are forbidden")
             target = checkout / name
+            if target.is_symlink():
+                raise ValueError(f"Checkout symlink forbidden: {name}")
             if not target.is_file():
                 missing.append(name)
                 continue
@@ -31,6 +39,8 @@ def verify(archive: Path, checkout: Path):
             if original_hash != current_hash:
                 changed.append(name)
             checked += 1
+    if checked + len(missing) != 92:
+        raise ValueError("Incomplete source verification")
     return checked, missing, changed
 
 
