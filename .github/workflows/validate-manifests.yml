@@ -50,3 +50,13 @@ jobs:
           python -m scripts.list_manifest_catalog examples --prefix does-not-exist. --output /tmp/kalivnexus-catalog-smoke/after.json
           python -m scripts.compare_manifest_catalogs /tmp/kalivnexus-catalog-smoke/before.json /tmp/kalivnexus-catalog-smoke/after.json > /tmp/kalivnexus-catalog-smoke/diff.json
           python -c 'import json; from pathlib import Path; d=json.loads(Path("/tmp/kalivnexus-catalog-smoke/diff.json").read_text()); assert d == {"added": [], "removed": ["weather.current.read"]}, d'
+      - name: Verify catalog drift gate and summary output
+        run: |
+          set +e
+          python -m scripts.compare_manifest_catalogs /tmp/kalivnexus-catalog-smoke/before.json /tmp/kalivnexus-catalog-smoke/after.json --fail-on-change --summary > /tmp/kalivnexus-catalog-smoke/drift.json
+          status=$?
+          set -e
+          test "$status" -eq 2
+          python -c 'import json; from pathlib import Path; d=json.loads(Path("/tmp/kalivnexus-catalog-smoke/drift.json").read_text()); assert d == {"added": [], "removed": ["weather.current.read"], "counts": {"added": 0, "removed": 1}}, d'
+          python -m scripts.compare_manifest_catalogs /tmp/kalivnexus-catalog-smoke/before.json /tmp/kalivnexus-catalog-smoke/before.json --fail-on-change --summary > /tmp/kalivnexus-catalog-smoke/unchanged.json
+          python -c 'import json; from pathlib import Path; d=json.loads(Path("/tmp/kalivnexus-catalog-smoke/unchanged.json").read_text()); assert d == {"added": [], "removed": [], "counts": {"added": 0, "removed": 0}}, d'
