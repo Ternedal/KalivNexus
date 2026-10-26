@@ -1,6 +1,8 @@
 """Offline manifest catalog CLI contract tests."""
 import json
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -50,6 +52,20 @@ class ManifestCatalogCliTests(unittest.TestCase):
             shutil.copyfile(EXAMPLE, path)
             with self.assertRaisesRegex(ValueError, "already registered"):
                 build_catalog([directory, str(path)])
+
+    def test_cli_exports_redacted_catalog_without_overwriting(self):
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / "catalog.json"
+            command = [sys.executable, "-m", "scripts.list_manifest_catalog", str(EXAMPLE), "--output", str(target)]
+            first = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(json.loads(target.read_text(encoding="utf-8")), {
+                "capabilities": [{"capability_id": "weather.current.read", "status": "disabled"}]
+            })
+            self.assertNotIn("secret_ref", target.read_text(encoding="utf-8"))
+            second = subprocess.run(command, capture_output=True, text=True)
+            self.assertNotEqual(second.returncode, 0)
+            self.assertIn("Cannot write catalog", second.stderr)
 
     def test_missing_manifest_is_rejected(self):
         with TemporaryDirectory() as directory:
