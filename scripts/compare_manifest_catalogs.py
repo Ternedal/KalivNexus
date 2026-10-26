@@ -34,13 +34,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Compare two offline capability catalogs")
     parser.add_argument("before", help="Previously exported catalog JSON")
     parser.add_argument("after", help="Newly exported catalog JSON")
+    parser.add_argument("--fail-on-change", action="store_true", help="Exit 2 if capability IDs changed")
     args = parser.parse_args()
     try:
         changes = compare_catalogs(args.before, args.after)
     except (OSError, ValueError, TypeError) as exc:
         parser.exit(1, f"Invalid catalog comparison: {type(exc).__name__}\n")
     print(json.dumps(changes, sort_keys=True))
-    return 0
+    return 2 if args.fail_on_change and (changes["added"] or changes["removed"]) else 0
 
 
 if __name__ == "__main__":
