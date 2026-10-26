@@ -67,6 +67,27 @@ class ManifestCatalogCliTests(unittest.TestCase):
             self.assertNotEqual(second.returncode, 0)
             self.assertIn("Cannot write catalog", second.stderr)
 
+    def test_prefix_filter_matches_and_non_matches(self):
+        self.assertEqual(build_catalog([str(EXAMPLE)], prefix="weather."), [
+            {"capability_id": "weather.current.read", "status": "disabled"}
+        ])
+        self.assertEqual(build_catalog([str(EXAMPLE)], prefix="calendar."), [])
+
+    def test_filter_does_not_skip_validation(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "invalid.manifest.json"
+            path.write_text("{}", encoding="utf-8")
+            with self.assertRaises(Exception):
+                build_catalog([str(path)], prefix="weather.")
+
+    def test_cli_prefix_filter(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "scripts.list_manifest_catalog", str(EXAMPLE), "--prefix", "calendar."],
+            capture_output=True, text=True
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"capabilities": []})
+
     def test_missing_manifest_is_rejected(self):
         with TemporaryDirectory() as directory:
             with self.assertRaises(FileNotFoundError):
