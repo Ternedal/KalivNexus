@@ -21,4 +21,3 @@ def test_safe_read_still_not_executable():
     assessment = assess_operation(extract_operations(doc)[0], doc)
     assert assessment['risk_level'] == 'low'
     assert assessment['requires_explicit_approval']
-

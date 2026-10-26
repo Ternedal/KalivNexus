@@ -11,4 +11,3 @@ def test_valid_relay_dns_names(host):
 def test_invalid_relay_dns_names_rejected(host):
     with pytest.raises(ValueError, match="Invalid relay hostname"):
         MCPRelayTransport(host=host, secret=SECRET, enabled=True)
-

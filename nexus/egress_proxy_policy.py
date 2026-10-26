@@ -1,16 +1,23 @@
-"""Validate approved HTTPS egress destinations; does not enforce network isolation."""
+"""Strict policy for a future dedicated egress proxy.
+
+This module validates requests but does not provide kernel network isolation.
+The deployment MUST prevent workers from bypassing the proxy.
+"""
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 import ipaddress
 
+
 class EgressDenied(PermissionError):
     pass
+
 
 @dataclass(frozen=True)
 class EgressGrant:
     origin: str
     methods: frozenset[str] = frozenset({'POST'})
     max_request_bytes: int = 1_048_576
+
 
 def _origin(url: str) -> tuple[str, str, int]:
     try:
@@ -33,6 +40,7 @@ def _origin(url: str) -> tuple[str, str, int]:
         return ('https', host, 443)
     except (ValueError, TypeError, AttributeError) as exc:
         raise EgressDenied('Invalid destination') from exc
+
 
 def authorize_egress(url: str, method: str, body: bytes, grant: EgressGrant) -> None:
     if not isinstance(grant, EgressGrant):
