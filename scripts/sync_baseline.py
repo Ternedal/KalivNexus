@@ -38,10 +38,21 @@ def main():
     p.add_argument("--repo", default="Ternedal/KalivNexus")
     p.add_argument("--branch", default="bootstrap/v0.50.0-baseline")
     p.add_argument("--apply", action="store_true", help="Actually write files; default is dry-run")
+    p.add_argument("--archive-sha256", help="Optional expected SHA-256 of the complete ZIP")
     p.add_argument("--min-files", type=int, default=92, help="Minimum source file count; default 92 for v0.50.0")
     args = p.parse_args()
     if args.branch in ("main", "master") or not args.branch.startswith("bootstrap/"):
         p.error("Refusing to modify protected default branches")
+    if args.archive_sha256:
+        expected = args.archive_sha256.lower()
+        if len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected):
+            p.error("--archive-sha256 must be a 64-character hexadecimal digest")
+        digest = hashlib.sha256()
+        with open(args.archive, "rb") as archive_file:
+            for chunk in iter(lambda: archive_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != expected:
+            raise ValueError("ZIP SHA-256 mismatch; refusing to import")
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         p.error("GITHUB_TOKEN must be set")
