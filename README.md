@@ -90,3 +90,5 @@ python -m scripts.compare_manifest_catalogs catalog-before.json catalog-after.js
 ```
 
 The output contains sorted `added` and `removed` ID arrays; it does not compare configuration, authorization or live availability.
+
+For CI drift detection, add `--fail-on-change` to the comparison command. It still prints the JSON diff and exits `2` if any capability ID was added or removed; unchanged catalogs exit `0`. Invalid inputs exit `1`.
