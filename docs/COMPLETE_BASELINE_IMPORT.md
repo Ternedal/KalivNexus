@@ -105,13 +105,25 @@ of `sync_baseline.py --apply`. The resulting tree is the same, and no token was 
 - **Commit `faf1dd713`, the one declared divergence:** `.github/workflows/ci.yml`
   keeps the repository's hardened workflow (`permissions: contents: read`,
   concurrency, a 15-minute timeout, `compileall`). Restoring the archive's minimal
-  workflow would have weakened CI. From this commit on, `verify_baseline.py`
-  reports exactly one `DIFFERENT` file, and it is this one.
+  workflow would have weakened CI. At that commit, `verify_baseline.py`
+  reported exactly one `DIFFERENT` file, and it was this one.
 - **`README.md`:** the original archive README is kept on this branch. The
   ecosystem and authority text that `main` had in its README is preserved
   verbatim in [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) and marked
   as a proposal.
 - **Docker isolation:** the v0.50.0 probe could not parse `/proc/net/ipv6_route`,
-  so the isolation job always failed. The fix is PR #37 against this branch.
+  so the isolation job always failed. Fixed by #37 (`411c29d35`), after a
+  security cross-review. CI and Docker isolation are both green on this branch.
+
+### Declared divergences from the archive
+
+`scripts/verify_baseline.py` reports these files as `DIFFERENT`. Each one is
+intentional. Any other `DIFFERENT` or `MISSING` file is a regression.
+
+| File | Why | Since |
+| --- | --- | --- |
+| `.github/workflows/ci.yml` | Repository CI hardening kept over the minimal original | `faf1dd713` |
+| `nexus/egress_isolation_probe.py` | Kernel-format IPv6 route parsing; exemption for lo REJECT only | #37, `411c29d35` |
+| `tests/test_egress_isolation_probe.py` | Tests for the above, with real kernel fixtures | #37, `411c29d35` |
 
 Merging this branch into `main` still requires Anders' explicit approval.
