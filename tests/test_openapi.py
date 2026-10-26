@@ -20,4 +20,3 @@ def test_endpoint_auth_and_inspect():
         r = client.post('/v1/openapi/inspect', json={'document': DOC}, headers={'Authorization': 'Bearer test-secret'})
         assert r.status_code == 200
         assert r.json()['count'] == 2
-

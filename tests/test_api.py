@@ -16,4 +16,3 @@ def test_health_and_auth():
             assert client.get("/v1/capabilities").json() == []
             assert client.post("/v1/import").status_code == 401
             assert client.get("/v1/categories").status_code == 200
-
