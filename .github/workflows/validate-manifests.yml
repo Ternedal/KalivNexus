@@ -39,3 +39,10 @@ jobs:
         run: python -m compileall -q scripts tests
       - name: Run manifest contract tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Smoke test offline catalog export and comparison
+        run: |
+          mkdir -p /tmp/kalivnexus-catalog-smoke
+          python -m scripts.list_manifest_catalog examples --output /tmp/kalivnexus-catalog-smoke/before.json
+          python -m scripts.list_manifest_catalog examples --prefix does-not-exist. --output /tmp/kalivnexus-catalog-smoke/after.json
+          python -m scripts.compare_manifest_catalogs /tmp/kalivnexus-catalog-smoke/before.json /tmp/kalivnexus-catalog-smoke/after.json > /tmp/kalivnexus-catalog-smoke/diff.json
+          python -c 'import json; from pathlib import Path; d=json.loads(Path("/tmp/kalivnexus-catalog-smoke/diff.json").read_text()); assert d == {"added": [], "removed": ["weather.current.read"]}, d'
