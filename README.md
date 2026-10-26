@@ -80,3 +80,13 @@ The catalog command validates local manifests and prints only capability IDs and
 ## Release discipline
 
 Document **proposed**, **implemented**, **automated-test verified**, **physically tested**, and **released** separately. This README describes a proposal, not delivered functionality.
+
+### Compare offline catalog snapshots
+
+After exporting two disabled-only catalog JSON snapshots, compare capability IDs without contacting providers:
+
+```bash
+python -m scripts.compare_manifest_catalogs catalog-before.json catalog-after.json
+```
+
+The output contains sorted `added` and `removed` ID arrays; it does not compare configuration, authorization or live availability.
