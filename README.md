@@ -66,7 +66,9 @@ To run the local contract tests with Python 3.11:
 python -m pip install 'jsonschema==4.23.0'
 python -m unittest discover -s tests -p 'test_*.py' -v
 python scripts/validate_manifest.py examples/weather-readonly.manifest.json
-python -m scripts.list_manifest_catalog examples/weather-readonly.manifest.json
+python -m scripts.list_manifest_catalog examples
+# Export redacted catalog metadata to a new file (fails if it exists):
+python -m scripts.list_manifest_catalog examples --output catalog.json/weather-readonly.manifest.json
 # Or inspect a directory containing *.manifest.json files (non-recursive):
 python -m scripts.list_manifest_catalog examples
 ```
