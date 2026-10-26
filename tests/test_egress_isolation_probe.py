@@ -95,10 +95,48 @@ def test_ipv6_default_route_hidden_among_valid_rows_rejected():
         assert not _no_default_route('/proc/net/ipv6_route', 6)
 
 
-def test_ipv6_howto_lo_reject_default_is_still_rejected():
-    # A ::/0 reject route on lo carries no traffic, but exempting it is a separate
-    # security decision; until made, any ::/0 row fails closed.
+def test_ipv6_howto_lo_reject_default_allowed():
     with patch('builtins.open', return_value=StringIO(V6_LOOPBACK + V6_HOWTO_LO_REJECT)):
+        assert _no_default_route('/proc/net/ipv6_route', 6)
+
+
+# Verbatim /proc/net/ipv6_route of the isolated mcp-worker in the Docker isolation
+# job on a GitHub runner (26 Oct 2026): only ::1 and the kernel's two ::/0 reject
+# entries on lo; no IPv6 on eth0 at all.
+CI_WORKER_V6 = (
+    Z + ' 00 ' + Z + ' 00 ' + Z + ' ffffffff 00000001 00000000 00200200       lo\n'
+    '00000000000000000000000000000001 80 ' + Z + ' 00 ' + Z + ' 00000000 00000004 00000000 80200001       lo\n'
+    + Z + ' 00 ' + Z + ' 00 ' + Z + ' ffffffff 00000001 00000000 00200200       lo\n'
+)
+
+
+def test_ipv6_observed_ci_worker_table_allowed():
+    with patch('builtins.open', return_value=StringIO(CI_WORKER_V6)):
+        assert _no_default_route('/proc/net/ipv6_route', 6)
+
+
+def _default_row(next_hop=Z, flags='00200200', dev='lo'):
+    return Z + ' 00 ' + Z + ' 00 ' + next_hop + ' ffffffff 00000001 00000000 ' + flags + ' ' + dev + '\n'
+
+
+def test_ipv6_reject_default_on_a_real_interface_rejected():
+    with patch('builtins.open', return_value=StringIO(V6_LOOPBACK + _default_row(dev='eth0'))):
+        assert not _no_default_route('/proc/net/ipv6_route', 6)
+
+
+def test_ipv6_default_on_lo_without_reject_flag_rejected():
+    with patch('builtins.open', return_value=StringIO(V6_LOOPBACK + _default_row(flags='00200001'))):
+        assert not _no_default_route('/proc/net/ipv6_route', 6)
+
+
+def test_ipv6_reject_default_on_lo_with_next_hop_rejected():
+    hop = 'fe800000000000000000000000000001'
+    with patch('builtins.open', return_value=StringIO(V6_LOOPBACK + _default_row(next_hop=hop))):
+        assert not _no_default_route('/proc/net/ipv6_route', 6)
+
+
+def test_ipv6_routable_default_next_to_reject_entries_rejected():
+    with patch('builtins.open', return_value=StringIO(CI_WORKER_V6 + V6)):
         assert not _no_default_route('/proc/net/ipv6_route', 6)
 
 

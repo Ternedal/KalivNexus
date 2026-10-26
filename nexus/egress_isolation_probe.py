@@ -46,9 +46,23 @@ def _no_default_route(path, family):
         prefix = int(fields[1], 16)
         if not 0 <= prefix <= 128 or not 0 <= int(fields[3], 16) <= 128:
             return False
-        if destination == 0 and prefix == 0:
+        if destination == 0 and prefix == 0 and not _is_loopback_reject(fields):
             return False
     return True
+
+
+RTF_REJECT = 0x0200
+
+
+def _is_loopback_reject(fields):
+    """The kernel's built-in unreachable ::/0 entry: on lo, REJECT, no next hop.
+
+    It cannot forward a packet (the kernel answers ENETUNREACH), so it is not an
+    egress path. Observed in the Docker worker on GitHub runners, 26 Oct 2026.
+    Any other ::/0 row -- another device, a next hop, or no REJECT flag -- still fails.
+    """
+    return (fields[9] == 'lo' and int(fields[4], 16) == 0
+            and int(fields[8], 16) & RTF_REJECT == RTF_REJECT)
 
 
 def probe(host='mcp-relay', port=8787):
