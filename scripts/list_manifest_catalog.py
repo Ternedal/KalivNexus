@@ -16,6 +16,8 @@ def build_catalog(paths: list[str]) -> list[dict[str, str]]:
             if not files:
                 raise ValueError("Manifest directory contains no *.manifest.json files")
         else:
+            if not path.exists():
+                raise FileNotFoundError("Manifest file does not exist")
             files = [path]
         for file in files:
             if not file.is_file():
