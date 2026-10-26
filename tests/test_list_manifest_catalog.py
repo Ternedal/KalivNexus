@@ -1,5 +1,7 @@
 """Offline manifest catalog CLI contract tests."""
 import json
+import os
+import stat
 import shutil
 import subprocess
 import sys
@@ -109,6 +111,17 @@ class ManifestCatalogCliTests(unittest.TestCase):
                 self.skipTest("Symbolic links unavailable")
             with self.assertRaisesRegex(ValueError, "symbolic links"):
                 build_catalog([str(link)])
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permission bits only")
+    def test_cli_export_is_private_on_posix(self):
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / "catalog.json"
+            result = subprocess.run(
+                [sys.executable, "-m", "scripts.list_manifest_catalog", str(EXAMPLE), "--output", str(target)],
+                capture_output=True, text=True
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
 
     def test_missing_manifest_is_rejected(self):
         with TemporaryDirectory() as directory:
