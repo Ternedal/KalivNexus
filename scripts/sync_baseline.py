@@ -67,6 +67,7 @@ def main():
         paths = [entry[len(prefix):] for entry in names]
         if len(paths) != len(set(paths)):
             raise ValueError("Duplicate target paths are not allowed")
+        total_uncompressed = 0
         for entry in sorted(names):
             path = entry[len(prefix):]
             if not path or path.startswith("/") or chr(92) in path or ".." in path.split("/"):
@@ -74,9 +75,14 @@ def main():
             info = z.getinfo(entry)
             if info.external_attr >> 16 & 0o170000 == 0o120000:
                 raise ValueError(f"Symlink entries are forbidden: {path}")
+            total_uncompressed += info.file_size
+            if total_uncompressed > 32 * 1024 * 1024:
+                raise ValueError("Baseline archive exceeds 32 MB uncompressed")
             if info.file_size > 4 * 1024 * 1024:
                 raise ValueError(f"Baseline file too large: {path}")
             data = z.read(entry)
+            if len(data) != info.file_size:
+                raise ValueError(f"Archive size mismatch: {path}")
             git_blob_sha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
             if existing.get(path) == git_blob_sha:
                 continue
