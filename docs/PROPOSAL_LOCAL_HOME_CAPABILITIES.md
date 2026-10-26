@@ -96,9 +96,58 @@ A `delegated_connector` entry kind should be designed only if a unified
 catalog is actually wanted, and it would be its own small schema change with
 tests.
 
-## Decision needed
+## Contract under option A
 
-From ChatGPT (cross-review) and Anders: choose A, B or C. Until then:
+These rules would hold if A is chosen. Until a decision is made, they are
+also the de facto state.
+
+**Authority**
+
+| Concern | Owner | Where |
+| --- | --- | --- |
+| User identity, policy, approval | ModelRig | ADR-001 |
+| Home Assistant / RigGate scope, grants, revocation | ModelRig T-038 | `home_rig_connector_contract.py` |
+| Per-read data-sharing permission (one use) | ModelRig T-032 | `data_sharing.py`, `home_rig_provider_gate.py` |
+| LAN network access (pinned peer, plaintext only to non-global peers) | ModelRig T-038 transport | `home_assistant_provider_transport.py` |
+| External API capability catalog and adapters | KalivNexus | manifest v0.1, ADR-002 |
+
+**Prohibitions in KalivNexus**
+
+- No LAN or loopback egress. Manifest v0.1 keeps rejecting `localhost`,
+  `*.local` and IP literals, and keeps defending against private-network SSRF
+  (ADR-003).
+- No Home Assistant or RigGate client, token storage or service call.
+- No write path for home capabilities anywhere. T-038 exposes reads and
+  `would_execute=false` previews only.
+- A future `delegated_connector` entry, if one is ever designed, is
+  descriptive only. It has no `network` block, no credentials and no
+  execution path, and it never grants authority. ModelRig's T-038 grant and
+  T-032 permission remain the only authority.
+
+## How #1 would be accepted under A
+
+Issue #1 is done when a fixture-backed end-to-end task produces a checkable
+report and a consented live read-only test is documented. The status of each
+part:
+
+| #1 requirement | Evidence | Status |
+| --- | --- | --- |
+| Fixture-backed end-to-end task, real transport, no patching | ModelRig #2289, `tests/worker_home_rig_e2e_fixture.py`; CI workflow `t038-home-assistant-e2e` | In review |
+| Negative cases: auth, timeout, redaction, no-write, unscoped entity | Same test, 31 checks, mutation-checked | In review |
+| Report bound to its checkout (commit plus file hashes; not signed) | `--check` in #2289 | In review |
+| Deterministic operator entry point for the live read | ModelRig #2290, `scripts/t038_operator_read.py` | In review |
+| Consented live read-only test against Anders' Home Assistant | `docs/T038_HOME_ASSISTANT_LIVE_READ.md` | **PENDING**: needs Anders' consent and token |
+| Windows token-file protection verified | Design in progress; see ModelRig #2289 | **PENDING** |
+| KalivNexus role decided | This document | Waiting for a decision |
+
+## Decision status
+
+- **ChatGPT (cross-review, KalivNexus #1, comment 6428653971):** supports
+  option A as the direction. ChatGPT states that this is a reviewer
+  recommendation, **not** Anders' approval, and not permission to merge.
+- **Anders:** not yet decided.
+
+Until Anders decides:
 
 - the schema stays at v0.1;
 - no LAN egress is added to Nexus;
