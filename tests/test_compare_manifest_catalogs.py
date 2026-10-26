@@ -67,6 +67,24 @@ class CatalogComparisonTests(unittest.TestCase):
             )
             self.assertEqual(same.returncode, 0, same.stderr)
 
+    def test_rejects_oversized_input(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "huge.json"
+            path.write_bytes(b" " * 1_048_577)
+            with self.assertRaisesRegex(ValueError, "1 MiB"):
+                read_catalog(path)
+
+    def test_rejects_symlinked_input(self):
+        with TemporaryDirectory() as directory:
+            target = self.write(directory, "target.json", [])
+            link = Path(directory) / "link.json"
+            try:
+                link.symlink_to(target)
+            except (OSError, NotImplementedError):
+                self.skipTest("Symbolic links unavailable")
+            with self.assertRaisesRegex(ValueError, "symbolic link"):
+                read_catalog(link)
+
     def test_rejects_malformed_shape(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "bad.json"
