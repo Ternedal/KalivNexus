@@ -126,6 +126,10 @@ intentional. Any other `DIFFERENT` or `MISSING` file is a regression.
 | `nexus/egress_isolation_probe.py` | Kernel-format IPv6 route parsing; exemption for lo REJECT only | #37, `411c29d35` |
 | `tests/test_egress_isolation_probe.py` | Tests for the above, with real kernel fixtures | #37, `411c29d35` |
 | `pyproject.toml` | Coexistence with `main`. `packages.find include = ["nexus*"]`, because `main`'s top-level `schemas/` breaks flat-layout discovery. A `catalog` extra (`jsonschema==4.23.0`) for `main`'s offline catalog | #22 integration branch |
+| `nexus/db.py` | `execution_plan_events` accepts `executed` and `execution_denied`, and a pre-fix table is migrated once. Codex P1 4394805150 | #40 |
+| `nexus/execution_audit.py` | `record_plan` commits the audit row, so rejected attempts survive the `HTTPException` that follows. Codex P2 4394805160 | #41 |
+| `nexus/egress_proxy.py` | The relay validates and forwards `Mcp-Session-Id` in both directions and stays stateless. Codex P2 4394805170 | #42 |
+| `nexus/mcp_relay_client.py` | The relay client carries the upstream session and refuses a malformed or changed one. Same finding | #42 |
 
 ### Coexistence with `main` (#22 integration branch)
 
@@ -135,7 +139,9 @@ conflict was `README.md`, and it keeps the archive README byte for byte.
 and [OFFLINE_MANIFEST_CATALOG.md](OFFLINE_MANIFEST_CATALOG.md). Both CI
 workflows install the same `.[test,catalog]` environment. `pytest` runs both
 suites, and `ci.yml` uses the Python 3.11/3.12 matrix that `main` already had.
-`verify_baseline.py` must report exactly the four files above.
+`verify_baseline.py` must report exactly the eight files above. The last four are fixes for v0.50.0
+defects that Codex found when it reviewed the integration (#39). Each has its own PR and regression test,
+as #37 did. `nexus/main.py` is untouched; `tests/test_baseline_completeness.py` pins it.
 
 Merging this branch, or the integration branch, into `main` still requires
 Anders' explicit approval.
