@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaliv.dk/schemas/nexus/capability-manifest-v0.1.schema.json",
+  "title": "KalivNexus capability manifest v0.1 (draft)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "capability_id",
+    "provider_id",
+    "adapter_version",
+    "display_name",
+    "description",
+    "operation",
+    "approval",
+    "enabled_by_default",
+    "auth",
+    "network",
+    "privacy",
+    "limits",
+    "retry",
+    "input_schema",
+    "output_schema"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "0.1"
+    },
+    "capability_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$",
+      "maxLength": 120
+    },
+    "provider_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "maxLength": 80
+    },
+    "adapter_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "operation": {
+      "enum": [
+        "read",
+        "write",
+        "destructive"
+      ]
+    },
+    "approval": {
+      "enum": [
+        "modelrig_policy",
+        "explicit_user_confirmation"
+      ]
+    },
+    "enabled_by_default": {
+      "const": false
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "secret_ref"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "api_key"
+          ]
+        },
+        "secret_ref": {
+          "type": "string",
+          "pattern": "^vault://[a-zA-Z0-9/_-]+$"
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_https_hosts",
+        "allow_redirects",
+        "timeout_ms",
+        "max_response_bytes"
+      ],
+      "properties": {
+        "allowed_https_hosts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?=.{1,253}$)(?!localhost$)(?!.*\\.local$)[a-z0-9-]+(?:\\.[a-z0-9-]+)+$",
+            "allOf": [
+              {
+                "not": {
+                  "pattern": "^[0-9]+(?:\\.[0-9]+){3}$"
+                }
+              }
+            ]
+          }
+        },
+        "allow_redirects": {
+          "const": false
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "max_response_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_classification",
+        "external_transfer",
+        "retention"
+      ],
+      "properties": {
+        "data_classification": {
+          "enum": [
+            "public",
+            "location",
+            "personal",
+            "sensitive"
+          ]
+        },
+        "external_transfer": {
+          "type": "boolean"
+        },
+        "retention": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_requests_per_minute",
+        "max_concurrency",
+        "max_cost_per_call_usd"
+      ],
+      "properties": {
+        "max_requests_per_minute": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "max_concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "max_cost_per_call_usd": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_attempts",
+        "backoff_ms",
+        "idempotent"
+      ],
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "backoff_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30000
+        },
+        "idempotent": {
+          "type": "boolean"
+        }
+      }
+    },
+    "input_schema": {
+      "type": "object"
+    },
+    "output_schema": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "enum": [
+              "write",
+              "destructive"
+            ]
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "approval": {
+            "const": "explicit_user_confirmation"
+          }
+        }
+      }
+    }
+  ]
+}

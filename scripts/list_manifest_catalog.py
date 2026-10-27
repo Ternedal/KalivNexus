@@ -1,0 +1,60 @@
+"""Inspect validated manifests offline; registration never activates a provider."""
+import argparse
+import json
+import os
+from pathlib import Path
+
+from scripts.manifest_registry import ManifestRegistry
+
+
+def build_catalog(paths: list[str], *, prefix: str | None = None) -> list[dict[str, str]]:
+    """Load explicit files or a directory of *.manifest.json files, without recursion."""
+    registry = ManifestRegistry()
+    for raw_path in paths:
+        path = Path(raw_path)
+        if path.is_symlink():
+            raise ValueError("Manifest paths must not be symbolic links")
+        if path.is_dir():
+            files = sorted(path.glob("*.manifest.json"))
+            if not files:
+                raise ValueError("Manifest directory contains no *.manifest.json files")
+        else:
+            if not path.exists():
+                raise FileNotFoundError("Manifest file does not exist")
+            files = [path]
+        for file in files:
+            if file.is_symlink():
+                raise ValueError("Manifest files must not be symbolic links")
+            if not file.is_file():
+                raise ValueError("Manifest path is not a regular file")
+            registry.register_file(file)
+    entries = registry.list_capabilities()
+    return [entry for entry in entries if entry["capability_id"].startswith(prefix)] if prefix is not None else entries
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="List disabled KalivNexus capabilities from local manifests")
+    parser.add_argument("manifests", nargs="+", help="Local manifest JSON files or directories containing *.manifest.json files")
+    parser.add_argument("--prefix", help="Filter validated capability IDs by literal prefix")
+    parser.add_argument("--output", type=Path, help="Write redacted JSON catalog to a new file (never overwrite)")
+    args = parser.parse_args()
+    try:
+        entries = build_catalog(args.manifests, prefix=args.prefix)
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        parser.exit(1, f"Invalid manifest catalog: {type(exc).__name__}\n")
+    payload = json.dumps({"capabilities": entries}, sort_keys=True) + "\n"
+    if args.output is not None:
+        try:
+            # Exclusive creation prevents overwrites and uses private file permissions.
+            fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as destination:
+                destination.write(payload)
+        except OSError as exc:
+            parser.exit(1, f"Cannot write catalog: {type(exc).__name__}\n")
+    else:
+        print(payload, end="")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
