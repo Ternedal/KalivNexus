@@ -42,9 +42,14 @@ def plan(db, digest: str, operation_id: str, parameters: dict) -> dict:
         value = parameters[key]
         if not isinstance(value, str) or not value or len(value) > 128 or any(ord(c) < 32 for c in value):
             raise ValueError('Invalid path parameter')
+        # quote() leaves '.' unencoded, so '.' or '..' would become a dot segment
+        # that a normalizing upstream resolves outside the approved route
+        # (Codex P2 4394998215 on #39). RFC 3986 dot segments are exactly these two.
+        if value in ('.', '..'):
+            raise ValueError('Path parameter must not be a dot segment')
         path = path.replace('{' + key + '}', quote(value, safe=''))
-    # The path is displayed only, never dereferenced. DNS and network-layer policy
-    # must be added before implementing actual execution.
+    # The opt-in executor (NEXUS_ENABLE_HTTP_EXECUTION) dereferences this target,
+    # so every path parameter must stay inside its own segment.
     target = urlunsplit(('https', url.netloc, url.path.rstrip('/') + path, '', ''))
     return {'spec_digest': digest, 'operation_id': operation_id, 'method': 'GET',
             'target_url': target, 'risk_level': row['risk_level'],
