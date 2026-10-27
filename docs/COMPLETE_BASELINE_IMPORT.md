@@ -130,6 +130,7 @@ intentional. Any other `DIFFERENT` or `MISSING` file is a regression.
 | `nexus/execution_audit.py` | `record_plan` commits the audit row, so rejected attempts survive the `HTTPException` that follows. Codex P2 4394805160 | #41 |
 | `nexus/egress_proxy.py` | The relay validates and forwards `Mcp-Session-Id` in both directions and stays stateless. Codex P2 4394805170 | #42 |
 | `nexus/mcp_relay_client.py` | The relay client carries the upstream session and refuses a malformed or changed one. Same finding | #42 |
+| `nexus/gateway.py` | Path parameters `.` and `..` are rejected, so the opt-in executor cannot leave the approved route. Codex P2 4394998215 | #43 |
 
 ### Coexistence with `main` (#22 integration branch)
 
@@ -139,7 +140,7 @@ conflict was `README.md`, and it keeps the archive README byte for byte.
 and [OFFLINE_MANIFEST_CATALOG.md](OFFLINE_MANIFEST_CATALOG.md). Both CI
 workflows install the same `.[test,catalog]` environment. `pytest` runs both
 suites, and `ci.yml` uses the Python 3.11/3.12 matrix that `main` already had.
-`verify_baseline.py` must report exactly the eight files above. The last four are fixes for v0.50.0
+`verify_baseline.py` must report exactly the nine files above. The last five are fixes for v0.50.0
 defects that Codex found when it reviewed the integration (#39). Each has its own PR and regression test,
 as #37 did. `nexus/main.py` is untouched; `tests/test_baseline_completeness.py` pins it.
 
