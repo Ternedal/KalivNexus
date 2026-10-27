@@ -1,7 +1,8 @@
 # Proposal: how KalivNexus relates to local home capabilities (Home Assistant, rig status)
 
-Date: 2026-10-26. **Status: proposal for decision.** Nothing in this file is
-implemented. The schema and the validator are unchanged. Tracking: #1.
+Date: 2026-10-26. **Status: decided: option A (Anders, 2026-10-27).** Nothing
+in this file is implemented, and the decision does not change that. The schema
+and the validator are unchanged. Tracking: #1.
 
 ## The question
 
@@ -132,23 +133,26 @@ part:
 
 | #1 requirement | Evidence | Status |
 | --- | --- | --- |
-| Fixture-backed end-to-end task, real transport, no patching | ModelRig #2289, `tests/worker_home_rig_e2e_fixture.py`; CI workflow `t038-home-assistant-e2e` | In review |
-| Negative cases: auth, timeout, redaction, no-write, unscoped entity | Same test, 31 checks, mutation-checked | In review |
-| Report bound to its checkout (commit plus file hashes; not signed) | `--check` in #2289 | In review |
-| Deterministic operator entry point for the live read | ModelRig #2290, `scripts/t038_operator_read.py` | In review |
+| Fixture-backed end-to-end task, real transport, no patching | ModelRig #2289, `tests/worker_home_rig_e2e_fixture.py`; CI workflow `t038-home-assistant-e2e` | Merged (`9ccba1800`) |
+| Negative cases: auth, timeout, redaction, no-write, unscoped entity | Same test, 31 checks, mutation-checked | Merged (`9ccba1800`) |
+| Report bound to its checkout (commit plus file hashes; not signed) | `--check` in #2289 | Merged (`9ccba1800`) |
+| Deterministic operator entry point for the live read | ModelRig #2290, `scripts/t038_operator_read.py` | Merged (`a45303a3e`) |
 | Consented live read-only test against Anders' Home Assistant | `docs/T038_HOME_ASSISTANT_LIVE_READ.md` | **PENDING**: needs Anders' consent and token |
-| Windows token-file protection verified | Design in progress; see ModelRig #2289 | **PENDING** |
-| KalivNexus role decided | This document | Waiting for a decision |
+| Windows token-file protection verified | ModelRig #2291 and #2294 are merged (judgment and reader). #2295 wires them into the loaders and is awaiting review and Anders' go. Not checked on the rig | **PENDING** |
+| KalivNexus role decided | This document | **Decided: A** (Anders, 2026-10-27) |
 
 ## Decision status
 
 - **ChatGPT (cross-review, KalivNexus #1, comment 6428653971):** supports
   option A as the direction. ChatGPT states that this is a reviewer
   recommendation, **not** Anders' approval, and not permission to merge.
-- **Anders:** not yet decided.
+- **Anders (2026-10-27):** chose **option A**. Nexus stays external-only, and
+  local home capabilities stay in ModelRig (T-038).
 
-Until Anders decides:
+What follows from A:
 
 - the schema stays at v0.1;
 - no LAN egress is added to Nexus;
-- nothing is activated.
+- nothing is activated;
+- a descriptive, non-executable `delegated_connector` catalog entry may follow
+  later as its own proposal. Recording this decision does not authorize it.
