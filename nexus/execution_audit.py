@@ -10,6 +10,10 @@ def record_plan(db, digest: str, operation_id: str, parameters: dict, outcome: s
     db.execute('''INSERT INTO execution_plan_events
         (spec_digest, operation_id, parameter_keys_sha256, outcome, reason)
         VALUES (?, ?, ?, ?, ?)''', (digest, operation_id, fingerprint, outcome, reason[:160]))
+    # An audit row must survive whatever the caller does next. nexus.db.connect()
+    # commits only on a normal exit, and nexus.main raises HTTPException inside
+    # `with connect()` right after recording a rejected attempt (Codex P2 on #39).
+    db.commit()
 
 
 def history(db, digest: str, operation_id: str, limit: int = 100):
