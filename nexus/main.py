@@ -220,6 +220,9 @@ def plan_operation(digest: str, operation_id: str, body: ExecutionPlanRequest):
             outcome = ('missing' if isinstance(exc, LookupError) else
                        'denied' if isinstance(exc, PermissionError) else 'invalid')
             record_plan(db, digest, operation_id, body.parameters, outcome, type(exc).__name__)
+            # connect() commits only on a normal exit; commit the audit row
+            # before the HTTP error propagates, or it is rolled back.
+            db.commit()
             raise HTTPException({'missing': 404, 'denied': 403, 'invalid': 422}[outcome], str(exc)) from exc
         record_plan(db, digest, operation_id, body.parameters, 'allowed')
         return result
@@ -255,6 +258,7 @@ def execute_operation(digest: str, operation_id: str, body: ExecutionPlanRequest
             return result
         except (LookupError, PermissionError, ValueError, OSError, TimeoutError, RuntimeError) as exc:
             record_plan(db, digest, operation_id, body.parameters, 'execution_denied', type(exc).__name__)
+            db.commit()  # as in plan_operation: keep the audit row when the HTTP error propagates
             status = 404 if isinstance(exc, LookupError) else 403 if isinstance(exc, PermissionError) else 502
             raise HTTPException(status, str(exc) if status in (403, 404) else 'Upstream request failed') from exc
 
