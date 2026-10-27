@@ -11,6 +11,9 @@ from nexus.relay_attestation import new_challenge, verify
 MAX_BODY = 1024 * 1024
 READ_ONLY_METHODS = frozenset(('initialize', 'notifications/initialized', 'tools/list'))
 _HOST_LABEL = re.compile(r'^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$')
+# Same rule as nexus.mcp_network.SESSION_RE; kept local so the relay client does not
+# import the direct-network transport.
+SESSION_RE = re.compile(r'^[\x21-\x7e]{1,256}$')
 
 
 def _valid_relay_host(host: str) -> bool:
@@ -69,6 +72,9 @@ class MCPRelayTransport:
             raise ValueError('Strong relay secret required')
         self.host, self.port, self._secret = host, port, secret
         self._connection_factory = connection_factory
+        # The upstream MCP session, carried by this client across relay requests
+        # because the relay itself is stateless (Codex P2 on #39).
+        self.session_id = None
 
     def attest(self, expected_upstream: str) -> None:
         """Verify the relay reports the expected configured target, not OS isolation."""
@@ -97,12 +103,15 @@ class MCPRelayTransport:
         _read_only_request(payload)
         conn = self._connection_factory(self.host, self.port, timeout=5)
         try:
-            conn.request('POST', '/mcp', body=payload, headers={
+            headers = {
                 'Authorization': 'Bearer ' + self._secret,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'Connection': 'close',
-            })
+            }
+            if self.session_id:
+                headers['Mcp-Session-Id'] = self.session_id
+            conn.request('POST', '/mcp', body=payload, headers=headers)
             response = conn.getresponse()
             length = response.getheader('Content-Length')
             if length is not None and (not length.isdecimal() or int(length) > MAX_BODY):
@@ -112,6 +121,13 @@ class MCPRelayTransport:
                 raise ValueError('Relay response too large')
             if response.status != 200 and response.status != 202:
                 raise PermissionError('Relay rejected request')
+            session = response.getheader('Mcp-Session-Id')
+            if session is not None:
+                if not SESSION_RE.fullmatch(session):
+                    raise ValueError('Invalid MCP session ID')
+                if self.session_id is not None and session != self.session_id:
+                    raise ValueError('Unexpected MCP session change')
+                self.session_id = session
             content_type = response.getheader('Content-Type') or ''
             return response.status, content_type, body
         finally:

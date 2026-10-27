@@ -10,21 +10,42 @@ from urllib.parse import urlsplit
 
 from nexus.egress_proxy_policy import EgressGrant, EgressDenied, authorize_egress
 from nexus.relay_attestation import proof
-from nexus.mcp_network import MCPNetworkTransport, MAX_BODY
+from nexus.mcp_network import MCPNetworkTransport, MAX_BODY, SESSION_RE
+
+SESSION_HEADER = 'Mcp-Session-Id'
 
 
 class ProxyError(Exception):
     pass
 
 
-def relay(payload: bytes, *, target: str, grant: EgressGrant, transport_factory=MCPNetworkTransport):
+def relay_session(payload: bytes, *, target: str, grant: EgressGrant, session_id: str | None = None,
+                  transport_factory=MCPNetworkTransport):
+    """Relay one request; carry the upstream MCP session across requests (Codex P2 on #39).
+
+    The relay stays stateless: every request gets a fresh transport, so the
+    session travels with the client. The client's Mcp-Session-Id is validated
+    and sent upstream, and the session the upstream assigns is returned so the
+    handler can forward it. The transport rejects a session the upstream
+    changes mid-conversation.
+    """
+    if session_id is not None and not SESSION_RE.fullmatch(session_id):
+        raise ValueError('Invalid MCP session ID')
     authorize_egress(target, 'POST', payload, grant)
     transport = transport_factory(target, enabled=True)
+    if session_id is not None:
+        transport.session_id = session_id
     status, content_type, response = transport._post(payload)
     if status < 200 or status >= 300:
         raise ProxyError('Upstream MCP request failed')
     if len(response) > MAX_BODY:
         raise ProxyError('Upstream response too large')
+    return status, content_type, response, getattr(transport, 'session_id', None)
+
+
+def relay(payload: bytes, *, target: str, grant: EgressGrant, transport_factory=MCPNetworkTransport):
+    status, content_type, response, _ = relay_session(payload, target=target, grant=grant,
+                                                      transport_factory=transport_factory)
     return status, content_type, response
 
 
@@ -72,12 +93,19 @@ def make_handler(*, grant: EgressGrant, secret: str, transport_factory=MCPNetwor
                 if len(body) != length:
                     self.send_error(400)
                     return
+                session_id = self.headers.get(SESSION_HEADER)
+                if session_id is not None and not SESSION_RE.fullmatch(session_id):
+                    self.send_error(400)
+                    return
                 # Destination comes from trusted configuration, never from a client header.
-                status, content_type, response = relay(body, target=grant.origin,
-                    grant=grant, transport_factory=transport_factory)
+                status, content_type, response, upstream_session = relay_session(
+                    body, target=grant.origin, grant=grant, session_id=session_id,
+                    transport_factory=transport_factory)
                 self.send_response(status)
                 self.send_header('Content-Type', content_type)
                 self.send_header('Content-Length', str(len(response)))
+                if upstream_session is not None:
+                    self.send_header(SESSION_HEADER, upstream_session)
                 self.end_headers()
                 self.wfile.write(response)
             except (EgressDenied, PermissionError):
