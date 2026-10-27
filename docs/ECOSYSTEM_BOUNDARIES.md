@@ -11,11 +11,13 @@
 discipline"). They were moved here because the v0.50.0 reconciliation (#22)
 restores the original archive `README.md` on `bootstrap/v0.50.0-baseline`.
 
-**Deliberately not copied:** `main`'s status line, "Suggested documentation
-roadmap", "Current prototype" and "Compare offline catalog snapshots". Those
-describe `main`'s offline manifest-catalog prototype (`scripts/validate_manifest.py`,
-`examples/`, `.github/workflows/validate-manifests.yml`), which does not exist on
-this branch. They remain authoritative on `main`.
+**Not copied here:** `main`'s status line, "Suggested documentation roadmap",
+"Current prototype" and "Compare offline catalog snapshots". Those describe the
+offline manifest-catalog prototype (`scripts/validate_manifest.py`, `examples/`,
+`.github/workflows/validate-manifests.yml`). Since `main` and the v0.50.0
+baseline were merged (#22), they are in
+[OFFLINE_MANIFEST_CATALOG.md](OFFLINE_MANIFEST_CATALOG.md), with the trust
+claim scoped to the catalog.
 
 See also: [Architecture decisions](ARCHITECTURE_DECISIONS.md) and
 [Complete v0.50.0 baseline import](COMPLETE_BASELINE_IMPORT.md).

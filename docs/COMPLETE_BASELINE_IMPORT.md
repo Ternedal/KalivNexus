@@ -125,5 +125,17 @@ intentional. Any other `DIFFERENT` or `MISSING` file is a regression.
 | `.github/workflows/ci.yml` | Repository CI hardening kept over the minimal original | `faf1dd713` |
 | `nexus/egress_isolation_probe.py` | Kernel-format IPv6 route parsing; exemption for lo REJECT only | #37, `411c29d35` |
 | `tests/test_egress_isolation_probe.py` | Tests for the above, with real kernel fixtures | #37, `411c29d35` |
+| `pyproject.toml` | Coexistence with `main`. `packages.find include = ["nexus*"]`, because `main`'s top-level `schemas/` breaks flat-layout discovery. A `catalog` extra (`jsonschema==4.23.0`) for `main`'s offline catalog | #22 integration branch |
 
-Merging this branch into `main` still requires Anders' explicit approval.
+### Coexistence with `main` (#22 integration branch)
+
+`main` is merged into the baseline as a real merge commit. The only textual
+conflict was `README.md`, and it keeps the archive README byte for byte.
+`main`'s README content is in [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md)
+and [OFFLINE_MANIFEST_CATALOG.md](OFFLINE_MANIFEST_CATALOG.md). Both CI
+workflows install the same `.[test,catalog]` environment. `pytest` runs both
+suites, and `ci.yml` uses the Python 3.11/3.12 matrix that `main` already had.
+`verify_baseline.py` must report exactly the four files above.
+
+Merging this branch, or the integration branch, into `main` still requires
+Anders' explicit approval.
