@@ -5,6 +5,44 @@ from pathlib import Path
 
 DB_PATH = Path(os.environ.get("NEXUS_DB", "./data/nexus.db"))
 
+# Outcomes written by nexus.main: planning ('allowed', 'denied', 'invalid',
+# 'missing') and opt-in HTTP execution ('executed', 'execution_denied').
+PLAN_EVENT_OUTCOMES = ('allowed', 'denied', 'invalid', 'missing', 'executed', 'execution_denied')
+PLAN_EVENTS_DDL = """CREATE TABLE IF NOT EXISTS {table} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spec_digest TEXT NOT NULL,
+            operation_id TEXT NOT NULL,
+            parameter_keys_sha256 TEXT NOT NULL,
+            outcome TEXT NOT NULL CHECK(outcome IN (""" + ", ".join(f"'{o}'" for o in PLAN_EVENT_OUTCOMES) + """)),
+            reason TEXT NOT NULL DEFAULT '',
+            occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )"""
+
+
+def _migrate_plan_event_outcomes(db):
+    """Rebuild a pre-fix execution_plan_events table whose CHECK lacks the execution outcomes.
+
+    SQLite cannot alter a CHECK constraint, so the table is copied into a new one
+    with the same columns and ids, inside one savepoint. A table that already
+    accepts every outcome is left alone, so this runs at most once per database.
+    """
+    row = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='execution_plan_events'").fetchone()
+    if row is None or all(f"'{outcome}'" in row[0] for outcome in PLAN_EVENT_OUTCOMES):
+        return
+    columns = "id, spec_digest, operation_id, parameter_keys_sha256, outcome, reason, occurred_at"
+    db.execute("SAVEPOINT migrate_plan_event_outcomes")
+    try:
+        db.execute(PLAN_EVENTS_DDL.format(table="execution_plan_events_new"))
+        db.execute(f"INSERT INTO execution_plan_events_new ({columns}) SELECT {columns} FROM execution_plan_events")
+        db.execute("DROP TABLE execution_plan_events")
+        db.execute("ALTER TABLE execution_plan_events_new RENAME TO execution_plan_events")
+    except BaseException:
+        db.execute("ROLLBACK TO migrate_plan_event_outcomes")
+        db.execute("RELEASE migrate_plan_event_outcomes")
+        raise
+    db.execute("RELEASE migrate_plan_event_outcomes")
+
+
 @contextmanager
 def connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -43,15 +81,8 @@ def connect():
             id INTEGER PRIMARY KEY AUTOINCREMENT, spec_digest TEXT NOT NULL,
             operation_id TEXT NOT NULL, previous_status TEXT NOT NULL,
             new_status TEXT NOT NULL, reason TEXT NOT NULL, occurred_at TEXT NOT NULL)""")
-        db.execute("""CREATE TABLE IF NOT EXISTS execution_plan_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            spec_digest TEXT NOT NULL,
-            operation_id TEXT NOT NULL,
-            parameter_keys_sha256 TEXT NOT NULL,
-            outcome TEXT NOT NULL CHECK(outcome IN ('allowed', 'denied', 'invalid', 'missing')),
-            reason TEXT NOT NULL DEFAULT '',
-            occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )""")
+        db.execute(PLAN_EVENTS_DDL.format(table="execution_plan_events"))
+        _migrate_plan_event_outcomes(db)
         db.execute("CREATE INDEX IF NOT EXISTS idx_plan_events_operation ON execution_plan_events(spec_digest, operation_id, id)")
         db.execute("""CREATE TABLE IF NOT EXISTS mcp_manifests (
             digest TEXT PRIMARY KEY, document TEXT NOT NULL, created_at TEXT NOT NULL)""")
