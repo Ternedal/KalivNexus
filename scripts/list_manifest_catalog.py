@@ -40,7 +40,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         entries = build_catalog(args.manifests, prefix=args.prefix)
-    except (OSError, ValueError, KeyError, TypeError, UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
         parser.exit(1, f"Invalid manifest catalog: {type(exc).__name__}\n")
     payload = json.dumps({"capabilities": entries}, sort_keys=True) + "\n"
     if args.output is not None:

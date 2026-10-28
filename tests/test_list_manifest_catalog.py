@@ -124,9 +124,13 @@ class ManifestCatalogCliTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
 
     def test_cli_invalid_utf8_is_reported_without_traceback(self):
+        # UnicodeDecodeError is a ValueError, so the existing handler already
+        # covers it; this pins that. The fixture must hold the raw bytes 0xFF 0xFE,
+        # not the escaped text (Codex P2 4377923351).
         with TemporaryDirectory() as directory:
             invalid = Path(directory) / "invalid.manifest.json"
-            invalid.write_bytes(b"\\xff\\xfe")
+            invalid.write_bytes(b"\xff\xfe")
+            self.assertEqual(invalid.read_bytes(), bytes([0xFF, 0xFE]))
             result = subprocess.run(
                 [sys.executable, "-m", "scripts.list_manifest_catalog", str(invalid)],
                 capture_output=True, text=True
