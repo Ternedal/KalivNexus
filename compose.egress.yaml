@@ -1,0 +1,45 @@
+# Opt-in v0.37 experimental deployment. No ports are published to the host.
+# The worker is attached ONLY to the internal network. The relay alone also
+# joins the egress network. Run only on a dedicated, trusted Docker host.
+services:
+  mcp-worker:
+    build: .
+    profiles: [egress-test]
+    entrypoint: ["python", "-m", "nexus.egress_isolation_probe"]
+    environment:
+      NEXUS_PROXY_HOST: mcp-relay
+      NEXUS_PROXY_PORT: "8787"
+    depends_on: [mcp-relay]
+    networks: [worker-internal]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    user: "10001:10001"
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: 0.5
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001"]
+    restart: "no"
+  mcp-relay:
+    build: .
+    profiles: [egress-test]
+    entrypoint: ["python", "-m", "nexus.egress_proxy"]
+    environment:
+      NEXUS_PROXY_BIND: "0.0.0.0"
+      NEXUS_PROXY_CONTAINER_ISOLATED: "1"
+      NEXUS_PROXY_ORIGIN: "${NEXUS_PROXY_ORIGIN:?Set approved HTTPS MCP endpoint}"
+      NEXUS_PROXY_SECRET: "${NEXUS_PROXY_SECRET:?Set random 32+ character secret}"
+    networks: [worker-internal, relay-egress]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    user: "10001:10001"
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001"]
+    restart: "no"
+networks:
+  worker-internal:
+    internal: true
+  relay-egress: {}
