@@ -1,0 +1,20 @@
+# Opt-in security test profile: NO network access, including DNS and localhost.
+# This is a denial baseline, not an external MCP execution environment.
+services:
+  mcp-sandbox-check:
+    build: .
+    profiles: [sandbox-test]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "10001:10001"
+    pids_limit: 32
+    mem_limit: 256m
+    cpus: 0.5
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    entrypoint: ["python", "-m", "nexus.sandbox_probe"]
+    restart: "no"
