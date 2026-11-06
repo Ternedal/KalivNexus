@@ -47,8 +47,13 @@ jobs:
         run: python scripts/validate_manifest.py examples/weather-readonly.manifest.json
       - name: Compile Python sources
         run: python -m compileall -q scripts tests
+      # Scoped to the manifest/catalog contract files: ci.yml's pytest already
+      # collects every test under tests/ (unittest cases included), so a second
+      # full 'unittest discover' here re-ran 135 tests x 2 Python per push with
+      # no extra verdict. This job keeps what is specific to it: the CLI, the
+      # catalog smoke and the manifest/catalog/schema contract tests.
       - name: Run manifest contract tests
-        run: python -m unittest discover -s tests -p 'test_*.py' -v
+        run: python -m unittest -v tests.test_manifest_schema tests.test_manifest_registry tests.test_catalog tests.test_list_manifest_catalog tests.test_compare_manifest_catalogs tests.test_adapter_manifest_harness
       - name: Smoke test offline catalog export and comparison
         run: |
           mkdir -p /tmp/kalivnexus-catalog-smoke
