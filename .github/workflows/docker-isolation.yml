@@ -18,7 +18,7 @@ jobs:
       NEXUS_PROXY_ORIGIN: https://example.com/mcp
       NEXUS_PROXY_SECRET: ci-only-not-a-production-secret-0123456789
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check Compose configuration
         run: docker compose -f compose.egress.yaml --profile egress-test config --quiet
       - name: Build containers
