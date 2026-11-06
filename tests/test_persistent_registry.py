@@ -1,9 +1,12 @@
 """SQLite registry persistence, revocation and audit contract tests."""
 import copy
+import gc
 import json
 import sqlite3
 import tempfile
 import unittest
+import warnings
+from contextlib import closing
 from pathlib import Path
 
 from scripts.persistent_registry import PersistentManifestRegistry
@@ -109,21 +112,21 @@ class PersistentRegistryTests(unittest.TestCase):
 
     def test_integrity_verifier_detects_manifest_tampering(self):
         identifier = self.registry.register(EXAMPLE)
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:  # commit, then close
             db.execute("UPDATE capabilities SET manifest_json=? WHERE capability_id=?",
                        ('{"capability_id":"weather.current.read"}', identifier))
         self.assertIn("manifest hash mismatch", self.registry.verify_integrity(identifier))
 
     def test_integrity_verifier_detects_status_tampering(self):
         identifier = self.registry.register(EXAMPLE)
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:  # commit, then close
             db.execute("UPDATE capabilities SET status='revoked' WHERE capability_id=?", (identifier,))
         self.assertIn("status/revocation event mismatch", self.registry.verify_integrity(identifier))
 
     def test_integrity_verifier_detects_review_hash_tampering(self):
         identifier = self.registry.register(EXAMPLE)
         self.registry.record_review(identifier, "reviewer", "approved", "review")
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:  # commit, then close
             db.execute("UPDATE review_events SET manifest_sha256='corrupt' WHERE capability_id=?", (identifier,))
         self.assertIn("review event hash mismatch", self.registry.verify_integrity(identifier))
 
@@ -140,6 +143,26 @@ class PersistentRegistryTests(unittest.TestCase):
         identifier = self.registry.register(item)
         item["display_name"] = "tampered"
         self.assertNotEqual(self.registry.get(identifier)["manifest"]["display_name"], "tampered")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class PersistentRegistryConnectionHygieneTests(unittest.TestCase):
+    def test_every_operation_closes_its_connection(self):
+        gc.collect()  # flush garbage from earlier tests so only ours can warn
+        with tempfile.TemporaryDirectory() as tmp:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always", ResourceWarning)
+                registry = PersistentManifestRegistry(Path(tmp) / "registry.sqlite3")
+                identifier = registry.register(EXAMPLE)
+                registry.get(identifier)
+                registry.list_capabilities()
+                del registry
+                gc.collect()
+            leaked = [w for w in caught if "unclosed database" in str(w.message)]
+            self.assertEqual(leaked, [], "sqlite connections must be closed, not left to GC")
 
 
 if __name__ == "__main__":
