@@ -5,6 +5,7 @@ No provider invocation, activation, credentials, or network operations.
 import hashlib
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -16,10 +17,19 @@ class PersistentManifestRegistry:
         self.database = str(database)
         self._initialize()
 
+    @contextmanager
     def _connect(self):
+        # sqlite3's own context manager commits/rolls back but never closes, so
+        # every `with self._connect() as db:` leaked a file handle until GC
+        # (ResourceWarning: unclosed database, 200+ per test run). Close
+        # explicitly; the transaction semantics of `with connection:` are kept.
         connection = sqlite3.connect(self.database, timeout=10)
-        connection.execute("PRAGMA foreign_keys=ON")
-        return connection
+        try:
+            connection.execute("PRAGMA foreign_keys=ON")
+            with connection:
+                yield connection
+        finally:
+            connection.close()
 
     def _initialize(self):
         with self._connect() as db:
