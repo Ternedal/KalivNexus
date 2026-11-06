@@ -51,7 +51,8 @@ def relay_port():
     SessionUpstream.seen = []
     handler = make_handler(grant=EgressGrant(origin=URL), secret=SECRET, transport_factory=SessionUpstream)
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    # default poll_interval (0.5 s) makes shutdown() wait out one poll per test
+    thread = threading.Thread(target=lambda: server.serve_forever(poll_interval=0.01), daemon=True)
     thread.start()
     try:
         yield server.server_address[1]
