@@ -40,7 +40,8 @@ def local_mcp_server(tools=None):
             except (ValueError, KeyError, TypeError):
                 self.send_error(400)
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    # default poll_interval (0.5 s) makes shutdown() wait out one poll per use
+    thread = threading.Thread(target=lambda: server.serve_forever(poll_interval=0.01), daemon=True)
     thread.start()
     try:
         yield f'http://127.0.0.1:{server.server_port}/mcp'

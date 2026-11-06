@@ -1,14 +1,19 @@
 name: CI
+# Push runs are main-only (as validate-manifests.yml): a push to a PR branch
+# used to run both the push run and the pull_request run (20 % of the last 75
+# runs were the same sha twice). workflow_dispatch covers any branch on demand.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: nexus-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: nexus-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
