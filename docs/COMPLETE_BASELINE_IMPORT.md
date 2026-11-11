@@ -134,7 +134,7 @@ intentional. Any other `DIFFERENT` or `MISSING` file is a regression.
 | `nexus/gateway.py` | Path parameters `.` and `..` are rejected, so the opt-in executor cannot leave the approved route. Codex P2 4394998215 | #43 |
 | `.github/workflows/docker-isolation.yml` | Push runs main-only, concurrency, `workflow_dispatch`, `actions/checkout@v7` | #45, `771be80` |
 | `nexus/mcp_test_harness.py` | `serve_forever(poll_interval=0.01)` so test shutdown does not wait out the 0.5 s default poll | #45, `771be80` |
-| `README.md` | Restructured: overview, installation, configuration and API reference first; the archive's changelog sections moved verbatim to [CHANGELOG.md](../CHANGELOG.md) | `docs/audit-20261111` |
+| `README.md` | Restructured: overview, installation, configuration and API reference first; the archive's changelog sections moved verbatim to [CHANGELOG.md](../CHANGELOG.md) | #51 |
 
 ### Coexistence with `main` (#22 integration branch)
 
