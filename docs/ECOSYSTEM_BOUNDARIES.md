@@ -3,13 +3,14 @@
 > **Status: proposal, not verified functionality.** This page states the
 > *intended* authority boundaries for KalivNexus inside the Kaliv ecosystem.
 > Nothing here asserts a runtime, API compatibility, deployed service or
-> production readiness. The imported v0.50.0 code on this branch has **not**
+> production readiness. The v0.50.0 code now on `main` has **not**
 > been validated against these boundaries.
 
 **Provenance.** The sections below are copied verbatim from `README.md` on
 `main` at `6e25c635e` (lines 5–47 and the first paragraph of "Release
 discipline"). They were moved here because the v0.50.0 reconciliation (#22)
-restores the original archive `README.md` on `bootstrap/v0.50.0-baseline`.
+restored the original archive `README.md` (since restructured; see
+[CHANGELOG.md](../CHANGELOG.md) for the archive's changelog).
 
 **Not copied here:** `main`'s status line, "Suggested documentation roadmap",
 "Current prototype" and "Compare offline catalog snapshots". Those describe the

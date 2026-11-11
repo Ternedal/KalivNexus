@@ -75,7 +75,7 @@ The host `api.example.invalid` and secret reference are **deliberately nonfuncti
 
 ## Acceptance before implementation claims
 
-- [ ] Publish a machine-readable JSON Schema for this manifest and negative validation fixtures.
+- [x] Publish a machine-readable JSON Schema for this manifest (`schemas/capability-manifest-v0.1.schema.json`) and negative validation tests (`tests/test_manifest_schema.py`; inline mutations, not separate fixture files).
 - [ ] Implement a signed/approved registry with version pinning and revocation.
 - [ ] Implement ModelRig authorization and user confirmation, tested with denied and forged requests.
 - [ ] Implement DNS/IP enforcement, redirect blocking, rate/cost limits and secret redaction.

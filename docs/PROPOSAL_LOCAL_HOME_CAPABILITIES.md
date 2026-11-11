@@ -138,7 +138,7 @@ part:
 | Report bound to its checkout (commit plus file hashes; not signed) | `--check` in #2289 | Merged (`9ccba1800`) |
 | Deterministic operator entry point for the live read | ModelRig #2290, `scripts/t038_operator_read.py` | Merged (`a45303a3e`) |
 | Consented live read-only test against Anders' Home Assistant | `docs/T038_HOME_ASSISTANT_LIVE_READ.md` | **PENDING**: needs Anders' consent and token |
-| Windows token-file protection verified | ModelRig #2291 and #2294 are merged (judgment and reader). #2295 wires them into the loaders and is awaiting review and Anders' go. Not checked on the rig | **PENDING** |
+| Windows token-file protection verified | ModelRig #2291 and #2294 are merged (judgment and reader). #2295, which wires them into the loaders, was merged on 2026-10-28. Not checked on the rig | **PENDING** |
 | KalivNexus role decided | This document | **Decided: A** (Anders, 2026-10-27) |
 
 ## Decision status
