@@ -4,7 +4,7 @@ The draft machine-readable schema is at [`schemas/capability-manifest-v0.1.schem
 
 ## Minimum fixtures to add to automated tests
 
-All cases below are covered by `tests/test_manifest_schema.py` except a negative `timeout_ms` case (the schema rejects values below 100); zero concurrency is covered.
+All cases below are covered by `tests/test_manifest_schema.py`.
 
 | Case | Expected |
 | --- | --- |

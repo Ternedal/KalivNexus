@@ -61,6 +61,9 @@ class ManifestContractTests(unittest.TestCase):
     def test_invalid_limits(self):
         self.assert_rejected(lambda m: m["limits"].update({"max_concurrency": 0}))
 
+    def test_negative_timeout_rejected(self):
+        self.assert_rejected(lambda m: m["network"].update({"timeout_ms": -1}))
+
     def test_redirects_blocked(self):
         self.assert_rejected(lambda m: m["network"].update({"allow_redirects": True}))
 
