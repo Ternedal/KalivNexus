@@ -1,5 +1,7 @@
 # Kaliv Nexus baseline import
 
+> **Historical (2026-11-11).** This page describes the reserved bootstrap branch before the import. The v0.50.0 source has since been imported and merged into `main` (#39, 2026-10-27). See [COMPLETE_BASELINE_IMPORT.md](COMPLETE_BASELINE_IMPORT.md). The status list below is kept as it was.
+
 This branch is reserved for importing the **v0.50.0** source baseline. It is **not yet a working application checkout**.
 
 ## Import requirements

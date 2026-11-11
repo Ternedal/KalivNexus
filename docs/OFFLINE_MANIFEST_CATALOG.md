@@ -8,8 +8,10 @@
 [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md) did not copy: the status
 line, "Suggested documentation roadmap", "Current prototype" and "Compare
 offline catalog snapshots". It moved here when `main` and the v0.50.0 baseline
-were merged (#22), because the repository's `README.md` is now the original
-v0.50.0 archive README, kept byte for byte. Changes from `main`'s text:
+were merged (#22), because the repository's `README.md` then became the original
+v0.50.0 archive README, kept byte for byte (it has since been restructured,
+with the archive changelog moved to [CHANGELOG.md](../CHANGELOG.md)). Changes
+from `main`'s text:
 
 - The trust claim is scoped to **this component**. `main`'s README said that
   neither implementation "connects to ModelRig, resolves secrets or calls
@@ -34,11 +36,12 @@ manifest format is in [CAPABILITY_MANIFEST_V0_1.md](CAPABILITY_MANIFEST_V0_1.md)
 | Fixture-only read adapter and redacted fixture audit | `scripts/read_only_adapter.py`, `scripts/adapter_fixture_audit.py` | None |
 | Review-token prototypes | `scripts/review_tokens.py`, `scripts/review_authorization.py` | None; test HMAC only |
 | Catalog CLI and snapshot comparison | `scripts/list_manifest_catalog.py`, `scripts/compare_manifest_catalogs.py` | None |
+| Offline Home Assistant/NAS fixture report | `scripts/readonly_fixture_report.py` (test: `scripts/test_readonly_fixture_report.py`) | None; local JSON fixtures only, reports `live_verified: false` |
 
 **None of the parts above** connects to ModelRig, resolves secrets or calls
 external APIs. This statement covers the catalog only. The v0.50.0 runtime in
 `nexus/` is a separate component with its own network code. Its boundaries
-are described in `README.md` and enforced by the Docker isolation workflow.
+are described in `README.md` and smoke-tested (not enforced) by the Docker isolation workflow.
 
 ## Current prototype (not an active broker)
 
@@ -97,8 +100,11 @@ The catalog command validates local manifests and prints only capability IDs
 and their disabled status. It does not activate or invoke providers.
 
 The [validate-manifests workflow](../.github/workflows/validate-manifests.yml)
-and the [CI workflow](../.github/workflows/ci.yml) are configured to run these
-checks. A passing CI run must be confirmed separately.
+and the [CI workflow](../.github/workflows/ci.yml) run these checks: `ci.yml`
+runs `pytest -q`, and validate-manifests runs the validator CLI, the catalog
+smoke and drift gate, and six named contract-test modules (not a full
+`unittest discover`). Check the latest run on GitHub Actions for the current
+result.
 
 ## Compare offline catalog snapshots
 

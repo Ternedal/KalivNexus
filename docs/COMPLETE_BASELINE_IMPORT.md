@@ -1,8 +1,9 @@
 # Complete v0.50.0 baseline import
 
-The repository's `bootstrap/v0.50.0-baseline` branch is a **work in progress**.
-Do not merge it into `main` until all source files are reconciled and the
-repository's own CI checks pass.
+The `bootstrap/v0.50.0-baseline` reconciliation is **complete** and was merged
+into `main` via #39 (2026-10-27). The sections below are the record of how it
+was done; "Declared divergences from the archive" is still the live reference
+for `verify_baseline.py`.
 
 ## One-shot source reconciliation
 
@@ -32,7 +33,7 @@ It does not run tests, verify Docker isolation, or publish a release.
 ## Verification after import
 
 ```bash
-python -m pip install -e '.[dev]'
+python -m pip install -e '.[test,catalog]'
 python -m pytest -q
 ```
 
@@ -77,7 +78,7 @@ accidentally importing the wrong archive:
 Example dry-run for the verified flat-root archive:
 
 ```bash
-python scripts/sync_baseline.py ./KalivNexus-v0.50.0-verified-source.zip \\
+python scripts/sync_baseline.py ./KalivNexus-v0.50.0-verified-source.zip \
   --archive-sha256 9d4215ee40696860221ed3fa8ee7cb9bbe659339ef7a918c280d786da329e60f
 ```
 
@@ -125,24 +126,27 @@ intentional. Any other `DIFFERENT` or `MISSING` file is a regression.
 | `.github/workflows/ci.yml` | Repository CI hardening kept over the minimal original | `faf1dd713` |
 | `nexus/egress_isolation_probe.py` | Kernel-format IPv6 route parsing; exemption for lo REJECT only | #37, `411c29d35` |
 | `tests/test_egress_isolation_probe.py` | Tests for the above, with real kernel fixtures | #37, `411c29d35` |
-| `pyproject.toml` | Coexistence with `main`. `packages.find include = ["nexus*"]`, because `main`'s top-level `schemas/` breaks flat-layout discovery. A `catalog` extra (`jsonschema==4.23.0`) for `main`'s offline catalog | #22 integration branch |
+| `pyproject.toml` | Coexistence with `main`. `packages.find include = ["nexus*"]`, because `main`'s top-level `schemas/` breaks flat-layout discovery. A `catalog` extra (`jsonschema==4.26.0` since #50) for `main`'s offline catalog | #22 integration branch; jsonschema 4.26.0 in #50 |
 | `nexus/db.py` | `execution_plan_events` accepts `executed` and `execution_denied`, and a pre-fix table is migrated once. Codex P1 4394805150 | #40 |
 | `nexus/execution_audit.py` | `record_plan` commits the audit row, so rejected attempts survive the `HTTPException` that follows. Codex P2 4394805160 | #41 |
 | `nexus/egress_proxy.py` | The relay validates and forwards `Mcp-Session-Id` in both directions and stays stateless. Codex P2 4394805170 | #42 |
 | `nexus/mcp_relay_client.py` | The relay client carries the upstream session and refuses a malformed or changed one. Same finding | #42 |
 | `nexus/gateway.py` | Path parameters `.` and `..` are rejected, so the opt-in executor cannot leave the approved route. Codex P2 4394998215 | #43 |
+| `.github/workflows/docker-isolation.yml` | Push runs main-only, concurrency, `workflow_dispatch`, `actions/checkout@v7` | #45, `771be80` |
+| `nexus/mcp_test_harness.py` | `serve_forever(poll_interval=0.01)` so test shutdown does not wait out the 0.5 s default poll | #45, `771be80` |
+| `README.md` | Restructured: overview, installation, configuration and API reference first; the archive's changelog sections moved verbatim to [CHANGELOG.md](../CHANGELOG.md) | #51 |
 
 ### Coexistence with `main` (#22 integration branch)
 
 `main` is merged into the baseline as a real merge commit. The only textual
-conflict was `README.md`, and it keeps the archive README byte for byte.
+conflict was `README.md`, and the merge kept the archive README byte for byte
+(it has since been restructured; see the `README.md` row above).
 `main`'s README content is in [ECOSYSTEM_BOUNDARIES.md](ECOSYSTEM_BOUNDARIES.md)
 and [OFFLINE_MANIFEST_CATALOG.md](OFFLINE_MANIFEST_CATALOG.md). Both CI
 workflows install the same `.[test,catalog]` environment. `pytest` runs both
 suites, and `ci.yml` uses the Python 3.11/3.12 matrix that `main` already had.
-`verify_baseline.py` must report exactly the nine files above. The last five are fixes for v0.50.0
+`verify_baseline.py` must report exactly the twelve files above. Rows five to nine are fixes for v0.50.0
 defects that Codex found when it reviewed the integration (#39). Each has its own PR and regression test,
 as #37 did. `nexus/main.py` is untouched; `tests/test_baseline_completeness.py` pins it.
 
-Merging this branch, or the integration branch, into `main` still requires
-Anders' explicit approval.
+The integration branch was merged into `main` by Anders on 2026-10-27 (#39).
